@@ -23,7 +23,7 @@ export default function HomePage() {
       {/* ── Nav ──────────────────────────────────────────────────────── */}
       <nav className="fixed top-0 inset-x-0 z-30 flex items-center justify-between px-6 sm:px-16 py-6 bg-gradient-to-b from-[#03040a]/90 to-transparent">
         <span className="font-display text-lg tracking-wide text-white">
-          <span>NORMIES<span className="text-[#4fc3f7]">VERSE</span></span>
+          <img src="/logo.png" alt="NormiesVerse" className="h-8 w-8 mr-2" /><span>NORMIES<span className="text-[#4fc3f7]">VERSE</span></span>
         </span>
         <div className="flex items-center gap-6 sm:gap-10">
           <a
