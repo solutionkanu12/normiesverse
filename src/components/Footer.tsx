@@ -19,7 +19,7 @@ export default function Footer() {
 
       <div className="flex items-center gap-4">
         <Link
-          href="/privacy"
+          href="/privacy policy"
           className="font-sans text-xs font-medium tracking-[0.08em] uppercase text-[#8090b0] hover:text-[#4fc3f7] transition-colors"
         >
           Privacy
