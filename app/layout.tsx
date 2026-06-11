@@ -3,6 +3,7 @@ import { Inter, Lilita_One, Share_Tech_Mono } from "next/font/google";
 import "./globals.css";
 import Web3Provider from "@/components/providers/Web3Provider";
 import GlobalOverlays from "@/components/ui/GlobalOverlaysLoader";
+import Footer from "@/components/Footer";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -39,6 +40,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col bg-[#03040a] text-white">
         <Web3Provider>{children}</Web3Provider>
+        <Footer />
         <GlobalOverlays />
       </body>
     </html>
