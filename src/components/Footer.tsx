@@ -19,10 +19,10 @@ export default function Footer() {
 
       <div className="flex items-center gap-4">
         <Link
-          href="/privacy policy"
+          href="/privacy"
           className="font-sans text-xs font-medium tracking-[0.08em] uppercase text-[#8090b0] hover:text-[#4fc3f7] transition-colors"
         >
-          Privacy
+          Privacy Policy
         </Link>
         <a
           href="https://github.com/solutionkanu12/normiesverse"
