@@ -47,6 +47,32 @@ export const BODY = {
 } as const;
 
 // ---------------------------------------------------------------------------
+// Body-part regions (shared with normieImageSkin)
+// ---------------------------------------------------------------------------
+
+/** A band of the 40×40 grid: rows [r0,r1) × cols [c0,c1). */
+export interface SkinRegion {
+  r0: number;
+  r1: number;
+  c0: number;
+  c1: number;
+}
+
+/**
+ * Row/column bands mapping the bitmap (and, for normieImageSkin, the
+ * composited NFT image) onto the avatar's body parts. Arms/legs split into
+ * left/right column halves.
+ */
+export const SKIN_REGIONS: Record<"head" | "torso" | "armL" | "armR" | "legL" | "legR", SkinRegion> = {
+  head: { r0: 0, r1: 8, c0: 0, c1: GRID },
+  torso: { r0: 8, r1: 20, c0: 0, c1: GRID },
+  armL: { r0: 20, r1: 28, c0: 0, c1: GRID / 2 },
+  armR: { r0: 20, r1: 28, c0: GRID / 2, c1: GRID },
+  legL: { r0: 28, r1: 40, c0: 0, c1: GRID / 2 },
+  legR: { r0: 28, r1: 40, c0: GRID / 2, c1: GRID },
+};
+
+// ---------------------------------------------------------------------------
 // Texture building
 // ---------------------------------------------------------------------------
 
@@ -61,7 +87,7 @@ function bitAt(cells: boolean[], row: number, col: number): boolean {
  * cols [c0,c1). The region is flipped vertically so bitmap row r0 (the top of
  * that band) lands at the top of the textured face.
  */
-function regionTexture(cells: boolean[], r0: number, r1: number, c0: number, c1: number): THREE.DataTexture {
+function regionTexture(cells: boolean[], { r0, r1, c0, c1 }: SkinRegion): THREE.DataTexture {
   const w = c1 - c0;
   const h = r1 - r0;
   const data = new Uint8Array(w * h * 4);
@@ -90,9 +116,9 @@ function regionTexture(cells: boolean[], r0: number, r1: number, c0: number, c1:
 // Materials
 // ---------------------------------------------------------------------------
 
-/** Build the part material: bitmap as `map`, surface from the Type config. */
-function makeMaterial(
-  map: THREE.DataTexture,
+/** Build the part material: `map` (bitmap or NFT-image region), surface from the Type config. */
+export function makeMaterial(
+  map: THREE.Texture,
   config: MaterialConfig,
   auraIntensity: number,
   accent: string,
@@ -153,12 +179,12 @@ export function buildSkin(
   }
 
   // Row bands → part regions. Arms/legs split into left/right column halves.
-  const head = regionTexture(cells, 0, 8, 0, 40);
-  const torso = regionTexture(cells, 8, 20, 0, 40);
-  const armLTex = regionTexture(cells, 20, 28, 0, 20);
-  const armRTex = regionTexture(cells, 20, 28, 20, 40);
-  const legLTex = regionTexture(cells, 28, 40, 0, 20);
-  const legRTex = regionTexture(cells, 28, 40, 20, 40);
+  const head = regionTexture(cells, SKIN_REGIONS.head);
+  const torso = regionTexture(cells, SKIN_REGIONS.torso);
+  const armLTex = regionTexture(cells, SKIN_REGIONS.armL);
+  const armRTex = regionTexture(cells, SKIN_REGIONS.armR);
+  const legLTex = regionTexture(cells, SKIN_REGIONS.legL);
+  const legRTex = regionTexture(cells, SKIN_REGIONS.legR);
 
   const textures = [head, torso, armLTex, armRTex, legLTex, legRTex];
   const materials = textures.map((t) => makeMaterial(t, config, auraIntensity, accent));

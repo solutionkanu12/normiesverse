@@ -2,24 +2,28 @@
 
 /**
  * NormieAvatar — a proper humanoid character (Minecraft-Steve proportions)
- * skinned with the selected Normie's exact 40×40 bitmap.
+ * skinned with the selected Normie's actual NFT artwork.
  *
  * Body parts (units): head 8×8×8, torso 8×12×4, arms 4×12×4, legs 4×12×4.
- * Each part's texture is a band of the bitmap (see normieSkin):
- *   head ← rows 0–7, torso ← rows 8–19, arms ← rows 20–27 (L/R cols),
- *   legs ← rows 28–39 (L/R cols). Bit 1 = #48494b, bit 0 = #e3e5e4.
+ * Each part's texture is a zone of the composited `/normie/{id}/image.png`
+ * (see normieImageSkin), sliced using the same row/col bands normieSkin uses
+ * for the raw bitmap: head ← rows 0–7, torso ← rows 8–19, arms ← rows 20–27
+ * (L/R cols), legs ← rows 28–39 (L/R cols). The bitmap-based skin from
+ * normieSkin renders instantly as a fallback while the NFT image loads (or if
+ * it fails to load).
  *
  * Rig hierarchy (so limbs swing about shoulders/hips and the body leans about
  * the hip): root → upper{ head, armL, armR, torso } + legL + legR. Animation
  * comes from avatarAnimation; the aura (Canvas-Level glow) is layered on top.
  */
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import type { AvatarAnimationState, AvatarBuild } from "@/systems/normie/avatar.types";
 import { Aura } from "./NormiePixelMesh";
 import { applyAvatarAnimation } from "./avatarAnimation";
-import { BODY, UNIT, buildSkin } from "./normieSkin";
+import { BODY, UNIT, buildSkin, type NormieSkin } from "./normieSkin";
+import { loadNormieImageSkin } from "./normieImageSkin";
 
 interface NormieAvatarProps {
   build: AvatarBuild;
@@ -45,13 +49,36 @@ const ARM_REL_Y = -(BODY.arm.h / 2) * UNIT; // arm center below shoulder pivot
 const LEG_REL_Y = -(BODY.leg.h / 2) * UNIT; // leg center below hip pivot
 
 export default function NormieAvatar({ build, animation = "idle" }: NormieAvatarProps) {
-  // Build per-part skin materials from the exact bitmap; rebuild only when the
-  // Normie (pixels) or its material kind changes.
-  const skin = useMemo(
+  // Bitmap-based skin renders instantly and acts as a fallback while the NFT
+  // image loads (or if it fails to load).
+  const fallbackSkin = useMemo(
     () => buildSkin(build.pixels, build.material, build.auraIntensity, build.accent),
     [build.pixels, build.material, build.auraIntensity, build.accent],
   );
-  useEffect(() => () => skin.dispose(), [skin]);
+  useEffect(() => () => fallbackSkin.dispose(), [fallbackSkin]);
+
+  // NFT-image skin: slices `/normie/{id}/image.png` into the same body-part
+  // zones, so the avatar wears the actual Normie artwork once it loads. Keyed
+  // by normieId so a stale image for the previous Normie is never shown —
+  // the bitmap fallback covers the gap until the new image arrives.
+  const [imageSkin, setImageSkin] = useState<{ normieId: number; skin: NormieSkin } | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    loadNormieImageSkin(build.normieId, build.material, build.auraIntensity, build.accent)
+      .then((loaded) => {
+        if (cancelled) loaded.dispose();
+        else setImageSkin({ normieId: build.normieId, skin: loaded });
+      })
+      .catch(() => {
+        // Network/load failure — the bitmap fallback skin remains in use.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [build.normieId, build.material, build.auraIntensity, build.accent]);
+  useEffect(() => () => imageSkin?.skin.dispose(), [imageSkin]);
+
+  const skin = imageSkin?.normieId === build.normieId ? imageSkin.skin : fallbackSkin;
 
   const centerY = (BODY.totalH / 2) * UNIT;
 

@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 const SOCIAL_CLIP =
   "polygon(5px 0%,100% 0%,100% calc(100% - 5px),calc(100% - 5px) 100%,0% 100%,0% 5px)";
@@ -7,6 +10,12 @@ const SOCIAL_LINK_CLASS =
   "flex items-center justify-center w-9 h-9 border border-[#4fc3f7]/20 text-[#8090b0] hover:border-[#4fc3f7] hover:text-[#4fc3f7] hover:bg-[#4fc3f7]/[0.06] transition-colors";
 
 export default function Footer() {
+  // The game routes are fullscreen 3D canvases with their own HUD overlays —
+  // the footer has no document flow to sit in there and instead renders on
+  // top of the HUD, so skip it entirely on those pages.
+  const pathname = usePathname();
+  if (pathname?.startsWith("/game")) return null;
+
   return (
     <footer className="relative z-10 border-t border-[#4fc3f7]/[0.08] px-6 sm:px-16 py-10 flex flex-wrap items-center justify-between gap-6">
       <span className="font-display text-base tracking-wide text-[#8090b0]">
