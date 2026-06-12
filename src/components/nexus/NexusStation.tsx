@@ -24,6 +24,9 @@ export default function NexusStation() {
   const coreLightRef = useRef<THREE.PointLight>(null);
   const conduitMats = useRef<THREE.MeshBasicMaterial[]>([]);
   const padMats = useRef<THREE.MeshBasicMaterial[]>([]);
+  const cageRingARef = useRef<THREE.Group>(null);
+  const cageRingBRef = useRef<THREE.Group>(null);
+  const habWindowMats = useRef<THREE.MeshBasicMaterial[]>([]);
 
   // Conduit transforms (12 lines up the spire).
   const conduits = useMemo(
@@ -55,6 +58,35 @@ export default function NexusStation() {
     [],
   );
 
+  // Reactor containment cage — structural struts ringing the energy core.
+  const CAGE_RADIUS = 26;
+  const CAGE_HEIGHT = 40;
+  const cageStruts = useMemo(
+    () =>
+      Array.from({ length: 8 }, (_, i) => {
+        const a = (i / 8) * TWO_PI;
+        return [Math.cos(a) * CAGE_RADIUS, 90, Math.sin(a) * CAGE_RADIUS] as [number, number, number];
+      }),
+    [],
+  );
+
+  // Habitat modules ringing the habitation torus — alternating solid hull
+  // blocks and lit-window blocks, like a residential ring.
+  const HAB_RADIUS = 130;
+  const HAB_COUNT = 18;
+  const habitatModules = useMemo(
+    () =>
+      Array.from({ length: HAB_COUNT }, (_, i) => {
+        const a = (i / HAB_COUNT) * TWO_PI;
+        return {
+          pos: [Math.cos(a) * HAB_RADIUS, 90, Math.sin(a) * HAB_RADIUS] as [number, number, number],
+          rotY: -a,
+          windowed: i % 2 === 1,
+        };
+      }),
+    [],
+  );
+
   useFrame((state) => {
     const t = state.clock.elapsedTime;
     if (stationRef.current) stationRef.current.rotation.y = t * 0.02;
@@ -75,6 +107,16 @@ export default function NexusStation() {
     for (let i = 0; i < padMats.current.length; i++) {
       const m = padMats.current[i];
       if (m) m.opacity = 0.6 + 0.4 * Math.sin(t * 2 + i * 1.1);
+    }
+
+    // Reactor containment field — two tilted rings precess independently.
+    if (cageRingARef.current) cageRingARef.current.rotation.z = t * 0.16;
+    if (cageRingBRef.current) cageRingBRef.current.rotation.y = t * -0.11;
+
+    // Habitat windows flicker.
+    for (let i = 0; i < habWindowMats.current.length; i++) {
+      const m = habWindowMats.current[i];
+      if (m) m.opacity = 0.45 + 0.35 * Math.sin(t * 1.4 + i * 0.9);
     }
   });
 
@@ -121,6 +163,40 @@ export default function NexusStation() {
         <torusGeometry args={[130, 2.2, 8, 80]} />
         <meshBasicMaterial color={NEXUS_COLORS.cyan2} />
       </mesh>
+
+      {/* ── Habitat modules studding the ring ── */}
+      {habitatModules.map((m, i) => (
+        <group key={`hab-${i}`} position={m.pos} rotation={[0, m.rotY, 0]}>
+          <mesh castShadow receiveShadow>
+            <boxGeometry args={[22, 14, 16]} />
+            <meshStandardMaterial {...(m.windowed ? HULL.panel : HULL.mid)} />
+          </mesh>
+          {m.windowed && (
+            <>
+              <mesh position={[11.2, 0, 0]}>
+                <boxGeometry args={[0.3, 9, 12]} />
+                <meshBasicMaterial
+                  color={NEXUS_COLORS.gold}
+                  transparent
+                  ref={(mat) => {
+                    if (mat) habWindowMats.current[i] = mat;
+                  }}
+                />
+              </mesh>
+              <mesh position={[-11.2, 0, 0]}>
+                <boxGeometry args={[0.3, 9, 12]} />
+                <meshBasicMaterial color={NEXUS_COLORS.gold} transparent opacity={0.6} />
+              </mesh>
+            </>
+          )}
+          {!m.windowed && (
+            <mesh position={[0, 7.4, 0]}>
+              <boxGeometry args={[2, 1.5, 2]} />
+              <meshBasicMaterial color={NEXUS_COLORS.cyan} transparent opacity={0.5} />
+            </mesh>
+          )}
+        </group>
+      ))}
 
       {/* ── Spokes ── */}
       {spokes.map((s, i) => (
@@ -183,6 +259,36 @@ export default function NexusStation() {
         <meshBasicMaterial color={NEXUS_COLORS.cyan} transparent opacity={0.12} />
       </mesh>
       <pointLight ref={coreLightRef} position={[0, 90, 0]} color={NEXUS_COLORS.cyan} intensity={4} distance={600} />
+
+      {/* ── Reactor containment cage ── */}
+      {cageStruts.map((pos, i) => (
+        <group key={`cage-strut-${i}`} position={pos}>
+          <mesh>
+            <boxGeometry args={[1.6, CAGE_HEIGHT, 1.6]} />
+            <meshStandardMaterial {...HULL.mid} emissive={NEXUS_COLORS.cyan} emissiveIntensity={0.15} />
+          </mesh>
+          <mesh position={[0, CAGE_HEIGHT / 2, 0]}>
+            <boxGeometry args={[2.6, 2.6, 2.6]} />
+            <meshBasicMaterial color={NEXUS_COLORS.gold} />
+          </mesh>
+          <mesh position={[0, -CAGE_HEIGHT / 2, 0]}>
+            <boxGeometry args={[2.6, 2.6, 2.6]} />
+            <meshBasicMaterial color={NEXUS_COLORS.gold} />
+          </mesh>
+        </group>
+      ))}
+      <group ref={cageRingARef} position={[0, 90, 0]} rotation={[Math.PI / 2.4, 0, 0]}>
+        <mesh>
+          <torusGeometry args={[CAGE_RADIUS, 0.7, 8, 48]} />
+          <meshBasicMaterial color={NEXUS_COLORS.cyan2} transparent opacity={0.8} />
+        </mesh>
+      </group>
+      <group ref={cageRingBRef} position={[0, 90, 0]} rotation={[-Math.PI / 3, Math.PI / 4, 0]}>
+        <mesh>
+          <torusGeometry args={[CAGE_RADIUS + 3, 0.5, 8, 48]} />
+          <meshBasicMaterial color={NEXUS_COLORS.gold} transparent opacity={0.6} />
+        </mesh>
+      </group>
     </group>
   );
 }

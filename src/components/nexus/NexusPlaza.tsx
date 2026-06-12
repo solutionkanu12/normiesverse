@@ -3,21 +3,21 @@
 /**
  * NexusPlaza — the walkable surface at the foot of the spire. A wide disc the
  * player stands on (so the 360-unit spire towers over them), ringed by a
- * glowing safety rail and lined with light pillars.
+ * glowing safety rail and enclosed by the Portal Chamber's colonnade.
  *
  * Physics (fixed body):
  *   - floor disc collider
  *   - spire-base collider (can't walk through the spire)
  *   - perimeter rail (ring of cuboid colliders) so the player can't fall off
+ *   - colonnade columns (ring of cylinder colliders, see PortalChamber)
  */
 import { useMemo } from "react";
 import { CuboidCollider, CylinderCollider, RigidBody } from "@react-three/rapier";
 import AmbientMotes from "@/components/shared/AmbientMotes";
-import { HULL, NEXUS_COLORS, PLAZA } from "./nexusConstants";
+import { CHAMBER, NEXUS_COLORS, PLAZA, chamberColumnPositions } from "./nexusConstants";
 
 const TWO_PI = Math.PI * 2;
 const RAIL_SEGMENTS = 24;
-const PILLARS = 8;
 
 export default function NexusPlaza() {
   const railSegs = useMemo(() => {
@@ -33,13 +33,7 @@ export default function NexusPlaza() {
     });
   }, []);
 
-  const pillars = useMemo(() => {
-    const r = PLAZA.railRadius - 1;
-    return Array.from({ length: PILLARS }, (_, i) => {
-      const a = (i / PILLARS) * TWO_PI + Math.PI / PILLARS;
-      return [Math.cos(a) * r, 0, Math.sin(a) * r] as [number, number, number];
-    });
-  }, []);
+  const columnPositions = useMemo(() => chamberColumnPositions(CHAMBER.columnHeight / 2), []);
 
   return (
     <group name="nexus-plaza">
@@ -56,6 +50,14 @@ export default function NexusPlaza() {
             args={[s.halfW, PLAZA.railHeight / 2 + 0.6, 0.4]}
             position={s.pos}
             rotation={[0, s.rotY, 0]}
+          />
+        ))}
+        {/* portal chamber colonnade */}
+        {columnPositions.map((p, i) => (
+          <CylinderCollider
+            key={`column-col-${i}`}
+            args={[CHAMBER.columnHeight / 2, CHAMBER.columnRadiusXZ]}
+            position={p}
           />
         ))}
       </RigidBody>
@@ -93,21 +95,6 @@ export default function NexusPlaza() {
         rise={0.7}
         seed={0xbeef}
       />
-
-      {/* ── Light pillars ── */}
-      {pillars.map((p, i) => (
-        <group key={`pillar-${i}`} position={p}>
-          <mesh position={[0, 4, 0]}>
-            <boxGeometry args={[2.5, 8, 2.5]} />
-            <meshStandardMaterial {...HULL.panel} />
-          </mesh>
-          <mesh position={[0, 8.5, 0]}>
-            <boxGeometry args={[1, 1, 1]} />
-            <meshBasicMaterial color={NEXUS_COLORS.cyan} />
-          </mesh>
-          <pointLight position={[0, 8.5, 0]} color={NEXUS_COLORS.cyan} intensity={1.2} distance={40} />
-        </group>
-      ))}
     </group>
   );
 }

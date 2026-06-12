@@ -5,6 +5,8 @@
  */
 import type { WorldKind } from "@/store/useWorldStore";
 
+const TWO_PI = Math.PI * 2;
+
 export const NEXUS_COLORS = {
   black: 0x03040a,
   fog: 0x04060f,
@@ -99,3 +101,53 @@ export const PORTALS: PortalDef[] = [
   { id: "frozen", label: "Frozen Reality", color: NEXUS_COLORS.cyan, ...portalTransform(180) },
   { id: "void", label: "Digital Void", color: NEXUS_COLORS.green, ...portalTransform(300) },
 ];
+
+/** Angle (degrees) of each entry in {@link PORTALS}, in the same order. */
+export const PORTAL_ANGLES_DEG = [60, 180, 300] as const;
+
+// ---------------------------------------------------------------------------
+// Portal Chamber — the great hall enclosing the plaza's portal ring. A wall of
+// hull panels at the portal radius, broken by three monumental gate frames
+// (one per portal), ringed by a colonnade of structural columns that carry a
+// trussed roof with a central oculus open to the spire.
+// ---------------------------------------------------------------------------
+
+export const CHAMBER = {
+  /** Radius of the inner wall + gate frames — matches the portal ring. */
+  wallRadius: PORTAL_RING_FROM_CENTER,
+  /** Height of the plain wall panels. */
+  wallHeight: 44,
+  /** Height of each gate frame's pylons (taller than the wall — monumental). */
+  gateHeight: 56,
+  /** Half-angle (deg) of the gate opening on either side of a portal's angle. */
+  gateHalfAngleDeg: 20,
+  /** Radius of the outer colonnade (structural columns + roof edge). */
+  columnRadius: 102,
+  /** Number of structural columns (evenly spaced, offset from the gates). */
+  columnCount: 12,
+  /** Height of each column. */
+  columnHeight: 48,
+  /** Radius of the column cross-section (also used for its collider). */
+  columnRadiusXZ: 2.6,
+  /** Inner radius of the roof annulus (the oculus opening above the spire). */
+  roofInnerRadius: 58,
+  /** Outer radius of the roof annulus. */
+  roofOuterRadius: 104,
+  /** Height of the roof + trusses. */
+  roofY: 48,
+} as const;
+
+/** Angles (radians) of the colonnade's structural columns — offset half a step
+ * from the truss/gate angles so columns never sit in a gate opening. */
+export function chamberColumnAngles(): number[] {
+  const step = TWO_PI / CHAMBER.columnCount;
+  const offset = step / 2;
+  return Array.from({ length: CHAMBER.columnCount }, (_, i) => offset + i * step);
+}
+
+/** World XZ positions of the colonnade columns at height `y`. */
+export function chamberColumnPositions(y = 0): [number, number, number][] {
+  return chamberColumnAngles().map(
+    (a) => [Math.sin(a) * CHAMBER.columnRadius, y, Math.cos(a) * CHAMBER.columnRadius] as [number, number, number],
+  );
+}

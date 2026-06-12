@@ -33,6 +33,7 @@ import NexusBackground from "./NexusBackground";
 import NexusPlaza from "./NexusPlaza";
 import NpcGuide from "./NpcGuide";
 import NexusHud from "./NexusHud";
+import PortalChamber from "./PortalChamber";
 import Portals from "./Portals";
 import PortalTransition from "./PortalTransition";
 import PlayerController from "@/components/player/PlayerController";
@@ -139,6 +140,7 @@ export default function NexusWorld({ build, level }: NexusWorldProps) {
             {/* Non-physics set dressing */}
             <NexusStation />
             <NexusBackground />
+            <PortalChamber />
             <Portals nearPortalId={nearPortalId} />
             <GroundFog radius={PLAZA.radius} color={NEXUS_COLORS.hullMid} seed={0xfade} />
 

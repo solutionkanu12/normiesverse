@@ -46,16 +46,48 @@ export default function NpcGuide({ position, active = false }: NpcGuideProps) {
 
       {/* hovering droid body */}
       <group ref={bodyRef}>
-        <mesh castShadow>
-          <icosahedronGeometry args={[0.9, 0]} />
-          <meshStandardMaterial color={0x16203c} metalness={0.85} roughness={0.3} emissive={0x0a1428} />
+        {/* main hull dome */}
+        <mesh castShadow scale={[1, 0.92, 1]}>
+          <sphereGeometry args={[0.85, 24, 16]} />
+          <meshStandardMaterial {...HULL.panel} />
         </mesh>
-        {/* eye */}
+
+        {/* sensor visor housing the eye */}
+        <mesh position={[0, 0.05, 0.6]}>
+          <boxGeometry args={[1.1, 0.32, 0.5]} />
+          <meshStandardMaterial {...HULL.dark} />
+        </mesh>
         <mesh position={[0, 0.1, 0.85]}>
           <sphereGeometry args={[0.28, 16, 16]} />
           <meshBasicMaterial color={active ? NEXUS_COLORS.cyan2 : NEXUS_COLORS.cyan} />
         </mesh>
         <pointLight ref={eyeLight} position={[0, 0.1, 1]} color={NEXUS_COLORS.cyan} intensity={1.4} distance={20} />
+
+        {/* comms antenna */}
+        <mesh position={[0, 0.95, -0.1]}>
+          <cylinderGeometry args={[0.04, 0.04, 0.5, 6]} />
+          <meshStandardMaterial {...HULL.mid} />
+        </mesh>
+        <mesh position={[0, 1.22, -0.1]}>
+          <sphereGeometry args={[0.09, 8, 8]} />
+          <meshBasicMaterial color={NEXUS_COLORS.gold} />
+        </mesh>
+
+        {/* stabilizer fins */}
+        <mesh position={[0.78, -0.05, 0]} rotation={[0, 0, -0.25]} castShadow>
+          <boxGeometry args={[0.45, 0.18, 0.6]} />
+          <meshStandardMaterial {...HULL.mid} />
+        </mesh>
+        <mesh position={[-0.78, -0.05, 0]} rotation={[0, 0, 0.25]} castShadow>
+          <boxGeometry args={[0.45, 0.18, 0.6]} />
+          <meshStandardMaterial {...HULL.mid} />
+        </mesh>
+
+        {/* thruster nozzle (keeps it hovering) */}
+        <mesh position={[0, -0.75, 0]} rotation={[Math.PI, 0, 0]}>
+          <coneGeometry args={[0.4, 0.5, 12]} />
+          <meshStandardMaterial {...HULL.dark} emissive={NEXUS_COLORS.cyan} emissiveIntensity={0.3} />
+        </mesh>
 
         {/* orbiting halo ring */}
         <mesh ref={ringRef} rotation={[Math.PI / 2.4, 0, 0]}>

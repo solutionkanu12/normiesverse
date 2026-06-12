@@ -123,13 +123,16 @@ function AtmosphericDust() {
 }
 
 // ---------------------------------------------------------------------------
-// Distant towers (14)
+// Distant towers (14) — three silhouette types: ring-habitat modules,
+// solar-array stations, and derelict hull clusters with distress beacons.
 // ---------------------------------------------------------------------------
 
 function DistantTowers() {
+  const beaconRefs = useRef<(THREE.PointLight | null)[]>([]);
+
   const towers = useMemo(() => {
     const rnd = mulberry32(7);
-    return Array.from({ length: 14 }, () => {
+    return Array.from({ length: 14 }, (_, i) => {
       const a = rnd() * TWO_PI;
       const dist = 380 + rnd() * 520;
       const h = 80 + rnd() * 340;
@@ -137,29 +140,105 @@ function DistantTowers() {
       const x = Math.cos(a) * dist;
       const z = Math.sin(a) * dist;
       const y = h / 2 - 60;
-      return { x, y, z, w, h, dark: rnd() > 0.5, stripCyan: rnd() > 0.5 };
+      return { x, y, z, w, h, dark: rnd() > 0.5, stripCyan: rnd() > 0.5, type: i % 3, jitter: rnd() };
     });
   }, []);
 
+  useFrame((state) => {
+    const t = state.clock.elapsedTime;
+    for (let i = 0; i < beaconRefs.current.length; i++) {
+      const l = beaconRefs.current[i];
+      if (l) l.intensity = Math.max(0, Math.sin(t * 2 + i * 1.7)) * 2.5;
+    }
+  });
+
   return (
     <>
-      {towers.map((t, i) => (
-        <group key={`tower-${i}`}>
-          <mesh position={[t.x, t.y, t.z]}>
-            <boxGeometry args={[t.w, t.h, t.w]} />
-            <meshStandardMaterial
-              color={t.dark ? 0x0c1224 : 0x141d38}
-              metalness={0.88}
-              roughness={0.4}
-              emissive={t.dark ? 0x05080f : 0x070c1a}
-            />
-          </mesh>
-          <mesh position={[t.x, t.y, t.z + t.w / 2 + 0.3]}>
-            <boxGeometry args={[t.w * 0.15, t.h * 0.7, 0.5]} />
-            <meshBasicMaterial color={t.stripCyan ? NEXUS_COLORS.cyan : NEXUS_COLORS.gold} transparent opacity={0.5} />
-          </mesh>
-        </group>
-      ))}
+      {towers.map((t, i) => {
+        const baseMat = {
+          color: t.dark ? 0x0c1224 : 0x141d38,
+          metalness: 0.88,
+          roughness: 0.4,
+          emissive: t.dark ? 0x05080f : 0x070c1a,
+        };
+        return (
+          <group key={`tower-${i}`}>
+            {/* main hull */}
+            <mesh position={[t.x, t.y, t.z]}>
+              <boxGeometry args={[t.w, t.h, t.w]} />
+              <meshStandardMaterial {...baseMat} />
+            </mesh>
+
+            {t.type === 0 && (
+              // Ring-habitat module — a station ring wrapped around the hull
+              <mesh position={[t.x, t.y + t.h * 0.18, t.z]} rotation={[Math.PI / 2, 0, 0]}>
+                <torusGeometry args={[t.w * 0.95, t.w * 0.08, 8, 24]} />
+                <meshBasicMaterial
+                  color={t.stripCyan ? NEXUS_COLORS.cyan : NEXUS_COLORS.gold}
+                  transparent
+                  opacity={0.55}
+                />
+              </mesh>
+            )}
+
+            {t.type === 1 && (
+              // Solar-array station — flat panels extending from the hull
+              <>
+                <mesh position={[t.x + t.w * 1.3, t.y, t.z]}>
+                  <boxGeometry args={[t.w * 2.2, 0.4, t.w * 0.9]} />
+                  <meshStandardMaterial
+                    color={0x0a1228}
+                    metalness={0.6}
+                    roughness={0.5}
+                    emissive={NEXUS_COLORS.cyan2}
+                    emissiveIntensity={0.06}
+                  />
+                </mesh>
+                <mesh position={[t.x - t.w * 1.3, t.y, t.z]}>
+                  <boxGeometry args={[t.w * 2.2, 0.4, t.w * 0.9]} />
+                  <meshStandardMaterial
+                    color={0x0a1228}
+                    metalness={0.6}
+                    roughness={0.5}
+                    emissive={NEXUS_COLORS.cyan2}
+                    emissiveIntensity={0.06}
+                  />
+                </mesh>
+              </>
+            )}
+
+            {t.type === 2 && (
+              // Derelict hull cluster — a broken attachment + distress beacon
+              <>
+                <mesh
+                  position={[t.x + t.w * 0.7, t.y - t.h * 0.2, t.z + t.w * 0.4]}
+                  rotation={[0.3, t.jitter * TWO_PI, 0.15]}
+                >
+                  <boxGeometry args={[t.w * 0.6, t.h * 0.3, t.w * 0.6]} />
+                  <meshStandardMaterial {...baseMat} />
+                </mesh>
+                <pointLight
+                  position={[t.x, t.y + t.h / 2 + 4, t.z]}
+                  color={0xff3344}
+                  intensity={0}
+                  distance={120}
+                  ref={(l) => {
+                    beaconRefs.current[i] = l;
+                  }}
+                />
+              </>
+            )}
+
+            {/* vertical accent strip (intact towers only — derelicts stay dark) */}
+            {t.type !== 2 && (
+              <mesh position={[t.x, t.y, t.z + t.w / 2 + 0.3]}>
+                <boxGeometry args={[t.w * 0.15, t.h * 0.7, 0.5]} />
+                <meshBasicMaterial color={t.stripCyan ? NEXUS_COLORS.cyan : NEXUS_COLORS.gold} transparent opacity={0.5} />
+              </mesh>
+            )}
+          </group>
+        );
+      })}
     </>
   );
 }
@@ -294,21 +373,37 @@ function ShipFleet() {
             groupRefs.current[i] = el;
           }}
         >
-          <mesh rotation={[Math.PI / 2, 0, 0]}>
-            <coneGeometry args={[2.2, 12, 6]} />
-            <meshStandardMaterial color={0x1a2540} metalness={0.9} roughness={0.2} emissive={0x0a1424} />
-          </mesh>
+          {/* fuselage */}
           <mesh>
-            <boxGeometry args={[10, 0.6, 3]} />
+            <boxGeometry args={[3, 1.8, 13]} />
             <meshStandardMaterial color={0x1a2540} metalness={0.9} roughness={0.2} emissive={0x0a1424} />
           </mesh>
-          <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 12]}>
-            <coneGeometry args={[1.4, 16, 6]} />
+          {/* nose cone */}
+          <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, 0, 9]}>
+            <coneGeometry args={[1.6, 6, 6]} />
+            <meshStandardMaterial color={0x1a2540} metalness={0.9} roughness={0.2} emissive={0x0a1424} />
+          </mesh>
+          {/* swept wings */}
+          <mesh position={[5.5, -0.1, -1]} rotation={[0, 0, -0.12]}>
+            <boxGeometry args={[9, 0.3, 4.5]} />
+            <meshStandardMaterial color={0x141d38} metalness={0.85} roughness={0.3} emissive={0x070c1a} />
+          </mesh>
+          <mesh position={[-5.5, -0.1, -1]} rotation={[0, 0, 0.12]}>
+            <boxGeometry args={[9, 0.3, 4.5]} />
+            <meshStandardMaterial color={0x141d38} metalness={0.85} roughness={0.3} emissive={0x070c1a} />
+          </mesh>
+          {/* twin engine glow */}
+          <mesh rotation={[-Math.PI / 2, 0, 0]} position={[1, 0, -8]}>
+            <coneGeometry args={[0.8, 9, 6]} />
             {i === 0 ? (
               <meshBasicMaterial ref={trailMat} color={NEXUS_COLORS.cyan} transparent opacity={0.4} />
             ) : (
               <meshBasicMaterial color={NEXUS_COLORS.cyan} transparent opacity={0.4} />
             )}
+          </mesh>
+          <mesh rotation={[-Math.PI / 2, 0, 0]} position={[-1, 0, -8]}>
+            <coneGeometry args={[0.8, 9, 6]} />
+            <meshBasicMaterial color={NEXUS_COLORS.cyan} transparent opacity={0.4} />
           </mesh>
         </group>
       ))}
