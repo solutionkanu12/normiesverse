@@ -17,6 +17,8 @@ export interface PlayerStats {
   /** Action Points → stamina/quest energy. */
   actionPoints: number;
   maxActionPoints: number;
+  /** Accumulated quest experience (transform-history depth). */
+  experience: number;
   health: number;
   maxHealth: number;
 }
@@ -43,6 +45,7 @@ const initialStats: PlayerStats = {
   level: 1,
   actionPoints: 0,
   maxActionPoints: 0,
+  experience: 0,
   health: 100,
   maxHealth: 100,
 };

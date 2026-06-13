@@ -135,16 +135,26 @@ export default function WorldExperience({ kind, normieId, build }: WorldExperien
     if (rewardTimer.current) window.clearTimeout(rewardTimer.current);
     rewardTimer.current = window.setTimeout(() => {
       const mainQuest = useQuestStore.getState().quests.find((q) => q.id === `${kind}-main`);
+      const reward = mainQuest?.reward ?? { actionPoints: 0, experience: 0 };
       const nextWorld = nextPortalAfter(kind);
       const nextWorldLabel = nextWorld ? PORTALS.find((p) => p.id === nextWorld)?.label ?? null : null;
       openRewardScreen({
         worldKind: kind,
         normieId,
         canvasLevel: config.canvasLevel,
-        reward: mainQuest?.reward ?? { actionPoints: 0, experience: 0 },
+        reward,
         coreColor: config.coreColor,
         loreExcerpt: lore[lore.length - 1]?.body,
         nextWorldLabel,
+      });
+
+      // Apply the reward to the player's stats — Action Points grow the energy
+      // pool (cap included so the bar stays sensible), Experience accumulates.
+      const ps = usePlayerStore.getState();
+      ps.setStats({
+        actionPoints: ps.stats.actionPoints + reward.actionPoints,
+        maxActionPoints: ps.stats.maxActionPoints + reward.actionPoints,
+        experience: ps.stats.experience + reward.experience,
       });
     }, REWARD_SCREEN_DELAY_MS);
   }, [addRealityCore, completeObjective, openRewardScreen, config.coreId, config.canvasLevel, config.coreColor, kind, normieId, lore]);
