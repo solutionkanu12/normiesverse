@@ -25,7 +25,7 @@
  */
 import { useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
-import { RigidBody } from "@react-three/rapier";
+import { RigidBody, CuboidCollider } from "@react-three/rapier";
 import * as THREE from "three";
 import { mulberry32 } from "@/components/nexus/nexusConstants";
 import type { WorldConfig } from "@/systems/world/worldTypes";
@@ -174,6 +174,12 @@ function FractureTower() {
       </mesh>
       <pointLight ref={coreRef} position={[0, 120, 0]} color={PURPLE} intensity={6} distance={400} />
       <pointLight position={[0, 212, 0]} color={CYAN} intensity={4} distance={160} />
+
+      {/* Solid collider so the player + camera can't pass through the spire.
+          Starts above the spawn platform so it never clips the spawning player. */}
+      <RigidBody type="fixed" colliders={false}>
+        <CuboidCollider args={[3, 100, 3]} position={[0, 106, 0]} />
+      </RigidBody>
     </group>
   );
 }
@@ -269,20 +275,33 @@ function BrokenArchitecture({ seed, extent }: { seed: number; extent: number }) 
   });
 
   return (
-    <group ref={groupRef} name="broken-architecture">
-      {fragments.map((f, i) => (
-        <mesh key={i} position={[f.x, f.y, f.z]} rotation={f.rot}>
-          <boxGeometry args={f.size} />
-          <meshStandardMaterial
-            color="#15102a"
-            metalness={0.5}
-            roughness={0.4}
-            emissive={i % 3 === 0 ? CYAN : PURPLE}
-            emissiveIntensity={0.18}
+    <>
+      <group ref={groupRef} name="broken-architecture">
+        {fragments.map((f, i) => (
+          <mesh key={i} position={[f.x, f.y, f.z]} rotation={f.rot}>
+            <boxGeometry args={f.size} />
+            <meshStandardMaterial
+              color="#15102a"
+              metalness={0.5}
+              roughness={0.4}
+              emissive={i % 3 === 0 ? CYAN : PURPLE}
+              emissiveIntensity={0.18}
+            />
+          </mesh>
+        ))}
+      </group>
+      {/* Solid colliders matching each fragment's resting transform. */}
+      <RigidBody type="fixed" colliders={false}>
+        {fragments.map((f, i) => (
+          <CuboidCollider
+            key={i}
+            args={[f.size[0] / 2, f.size[1] / 2, f.size[2] / 2]}
+            position={[f.x, f.y, f.z]}
+            rotation={f.rot}
           />
-        </mesh>
-      ))}
-    </group>
+        ))}
+      </RigidBody>
+    </>
   );
 }
 

@@ -97,6 +97,7 @@ export default function PlayerController({
       move: new THREE.Vector3(),
       target: new THREE.Vector3(),
       camPos: new THREE.Vector3(),
+      camDir: new THREE.Vector3(),
       guide: new THREE.Vector3(...(guidePos ?? [0, 0, 0])),
       down: new THREE.Vector3(0, -1, 0),
     }),
@@ -203,15 +204,20 @@ export default function PlayerController({
       true,
     );
 
-    // ── Third-person camera ──
+    // ── Third-person camera (collision-aware: never clip through geometry) ──
     scratch.target.set(t.x, t.y + 1.4, t.z);
     const cp = Math.cos(pitch.current);
     const sp = Math.sin(pitch.current);
-    scratch.camPos.set(
-      scratch.target.x + sy * cp * CAM_DISTANCE,
-      scratch.target.y + sp * CAM_DISTANCE,
-      scratch.target.z + cy * cp * CAM_DISTANCE,
-    );
+    // Unit direction from the player's head toward the ideal camera position.
+    scratch.camDir.set(sy * cp, sp, cy * cp);
+    // Cast from the head outward; if a solid is hit before CAM_DISTANCE, pull
+    // the camera in to the hit point (with a small skin) so it stays in front
+    // of any wall / structure / terrain. The player's own body is excluded.
+    let camDist = CAM_DISTANCE;
+    const camRay = new rapier.Ray(scratch.target, scratch.camDir);
+    const camHit = world.castRay(camRay, CAM_DISTANCE, true, undefined, undefined, undefined, body.current ?? undefined);
+    if (camHit && camHit.timeOfImpact < camDist) camDist = Math.max(1.4, camHit.timeOfImpact - 0.35);
+    scratch.camPos.copy(scratch.target).addScaledVector(scratch.camDir, camDist);
     camera.position.lerp(scratch.camPos, 0.25);
     camera.lookAt(scratch.target);
 

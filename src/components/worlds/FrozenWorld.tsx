@@ -20,6 +20,7 @@
 import { useEffect, useMemo, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
+import { RigidBody, CuboidCollider, CylinderCollider } from "@react-three/rapier";
 import { mulberry32 } from "@/components/nexus/nexusConstants";
 import type { WorldConfig } from "@/systems/world/worldTypes";
 import AmbientMotes from "@/components/shared/AmbientMotes";
@@ -205,6 +206,12 @@ function MountainRange({ extent, color }: { extent: number; color: string }) {
           </mesh>
         </group>
       ))}
+      {/* Solid colliders — the mountains wall off the world's edge */}
+      <RigidBody type="fixed" colliders={false}>
+        {peaks.map((m, i) => (
+          <CylinderCollider key={i} args={[m.h / 2, m.r]} position={[m.x, m.h / 2, m.z]} />
+        ))}
+      </RigidBody>
     </group>
   );
 }
@@ -248,6 +255,12 @@ function FrozenRiver({ extent, accent }: { extent: number; accent: string }) {
           ))}
         </group>
       ))}
+      {/* Solid bridge decks */}
+      <RigidBody type="fixed" colliders={false}>
+        {bridges.map((x, i) => (
+          <CuboidCollider key={i} args={[3.5, 0.4, 15]} position={[x, 1.4, extent * 0.45]} />
+        ))}
+      </RigidBody>
     </group>
   );
 }
@@ -286,6 +299,17 @@ function IceCaves({ extent }: { extent: number }) {
           </mesh>
         </group>
       ))}
+      {/* Solid mound colliders */}
+      <RigidBody type="fixed" colliders={false}>
+        {caves.map((c, i) => (
+          <CuboidCollider
+            key={i}
+            args={[c.r, c.r * 0.7, c.len / 2]}
+            position={[c.x, c.r * 0.4, c.z]}
+            rotation={[0, c.rot, 0]}
+          />
+        ))}
+      </RigidBody>
     </group>
   );
 }
@@ -345,6 +369,26 @@ function TempleRuins({ extent, accent }: { extent: number; accent: string }) {
           ))}
         </group>
       ))}
+      {/* Solid colliders for every pillar + wall segment */}
+      <RigidBody type="fixed" colliders={false}>
+        {sites.flatMap((s, i) => [
+          ...s.pillars.map((p, j) => (
+            <CylinderCollider
+              key={`pc-${i}-${j}`}
+              args={[p.h / 2, p.r * 1.1]}
+              position={[s.cx + p.dx, p.h / 2, s.cz + p.dz]}
+            />
+          )),
+          ...s.walls.map((w, j) => (
+            <CuboidCollider
+              key={`wc-${i}-${j}`}
+              args={[w.w / 2, w.h / 2, 0.7]}
+              position={[s.cx + w.dx, w.h / 2, s.cz + w.dz]}
+              rotation={[0, w.rot, 0]}
+            />
+          )),
+        ])}
+      </RigidBody>
     </group>
   );
 }
@@ -417,6 +461,17 @@ function FrozenStatues({ extent, accent }: { extent: number; accent: string }) {
           </mesh>
         </group>
       ))}
+      {/* Solid colliders enclosing each (scaled) statue body */}
+      <RigidBody type="fixed" colliders={false}>
+        {statues.map((st, i) => (
+          <CuboidCollider
+            key={i}
+            args={[5.2 * st.s, 9 * st.s, 1.7 * st.s]}
+            position={[st.x, 9 * st.s, st.z]}
+            rotation={[0, st.rot, 0]}
+          />
+        ))}
+      </RigidBody>
     </group>
   );
 }
@@ -477,6 +532,14 @@ function AncientIceTemple({ extent, accent }: { extent: number; accent: string }
       {/* blue light emanating from inside */}
       <pointLight ref={glowRef} position={[0, 36, 0]} color={accent} intensity={5} distance={extent * 1.6} />
       <pointLight position={[0, 80, 0]} color="#4fc3f7" intensity={3} distance={120} />
+
+      {/* Solid colliders for the temple mass (inherits the group's position) */}
+      <RigidBody type="fixed" colliders={false}>
+        {tiers.map((t, i) => (
+          <CuboidCollider key={i} args={[t.w / 2, t.h / 2, t.w / 2]} position={[0, t.y, 0]} />
+        ))}
+        <CuboidCollider args={[7, 30, 7]} position={[0, 30, 0]} />
+      </RigidBody>
     </group>
   );
 }
@@ -596,6 +659,15 @@ export default function FrozenWorld({ config }: { config: WorldConfig }) {
           })}
         </group>
       ))}
+
+      {/* Solid colliders for crystal formations (skip any over the spawn point) */}
+      <RigidBody type="fixed" colliders={false}>
+        {crystals.map((c, i) =>
+          Math.abs(config.spawn[0] - c.p.x) < c.r + 2 && Math.abs(config.spawn[2] - c.p.z) < c.r + 2 ? null : (
+            <CuboidCollider key={i} args={[c.r, c.h / 2, c.r]} position={[c.p.x, c.h / 2, c.p.z]} />
+          ),
+        )}
+      </RigidBody>
 
       {/* Sky + weather */}
       <Aurora color={palette.accent} extent={extent} />

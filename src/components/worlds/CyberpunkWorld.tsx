@@ -16,6 +16,7 @@
 import { useEffect, useMemo, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
+import { RigidBody, CuboidCollider } from "@react-three/rapier";
 import { mulberry32 } from "@/components/nexus/nexusConstants";
 import type { WorldConfig } from "@/systems/world/worldTypes";
 import AmbientMotes from "@/components/shared/AmbientMotes";
@@ -302,6 +303,35 @@ export default function CyberpunkWorld({ config }: { config: WorldConfig }) {
         <meshStandardMaterial color="#0a0d16" metalness={0.9} roughness={0.18} envMapIntensity={0.7} />
       </mesh>
       <GroundCollider extent={extent} />
+
+      {/* ── Solid colliders: player + camera can't pass through structures ── */}
+      <RigidBody type="fixed" colliders={false}>
+        {/* Skyscrapers (skip any tower overlapping the spawn so the player isn't trapped) */}
+        {towers.map((t, i) =>
+          Math.abs(config.spawn[0] - t.x) < t.w / 2 + 2 && Math.abs(config.spawn[2] - t.z) < t.d / 2 + 2 ? null : (
+            <CuboidCollider key={`tc-${i}`} args={[t.w / 2, t.h / 2, t.d / 2]} position={[t.x, t.h / 2, t.z]} />
+          ),
+        )}
+        {/* Corporate megatower */}
+        <CuboidCollider args={[22, 150, 22]} position={[0, 150, -extent * 1.25]} />
+        {/* Elevated highway decks + their support pylons */}
+        {highways.map((hw, i) => (
+          <group key={`hwc-${i}`}>
+            <CuboidCollider args={[hw.size[0] / 2, hw.size[1] / 2, hw.size[2] / 2]} position={hw.pos} />
+            {hw.pylons.map((d, k) => (
+              <CuboidCollider
+                key={k}
+                args={[1.25, hw.y / 2, 1.25]}
+                position={hw.horizontal ? [d, hw.y / 2, hw.pos[2]] : [hw.pos[0], hw.y / 2, d]}
+              />
+            ))}
+          </group>
+        ))}
+        {/* Storefront signs */}
+        {storefronts.map((s, i) => (
+          <CuboidCollider key={`sfc-${i}`} args={[2, 0.7, 0.15]} position={[s.x, s.h, s.z]} />
+        ))}
+      </RigidBody>
 
       {/* Glowing street grid inlay */}
       <gridHelper args={[extent * 2.8, 48, palette.accent, palette.secondary]} position={[0, 0.05, 0]} />

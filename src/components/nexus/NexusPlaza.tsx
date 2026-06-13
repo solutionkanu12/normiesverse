@@ -14,10 +14,18 @@
 import { useMemo } from "react";
 import { CuboidCollider, CylinderCollider, RigidBody } from "@react-three/rapier";
 import AmbientMotes from "@/components/shared/AmbientMotes";
-import { CHAMBER, NEXUS_COLORS, PLAZA, chamberColumnPositions } from "./nexusConstants";
+import { CHAMBER, NEXUS_COLORS, PLAZA, PORTAL_ANGLES_DEG, chamberColumnPositions } from "./nexusConstants";
 
 const TWO_PI = Math.PI * 2;
 const RAIL_SEGMENTS = 24;
+const DEG = Math.PI / 180;
+const WALL_STEP_DEG = 15;
+const WALL_PANEL_WIDTH = 22;
+
+/** Shortest angular distance (deg) between two angles — mirrors PortalChamber. */
+function angleDiffDeg(a: number, b: number): number {
+  return Math.abs(((a - b + 540) % 360) - 180);
+}
 
 export default function NexusPlaza() {
   const railSegs = useMemo(() => {
@@ -34,6 +42,34 @@ export default function NexusPlaza() {
   }, []);
 
   const columnPositions = useMemo(() => chamberColumnPositions(CHAMBER.columnHeight / 2), []);
+
+  // Portal Chamber wall panels (same placement as PortalChamber.WallPanels) —
+  // every 15° around the portal ring, skipping the gate openings.
+  const wallPanels = useMemo(() => {
+    const out: { x: number; z: number; rot: number }[] = [];
+    for (let deg = 0; deg < 360; deg += WALL_STEP_DEG) {
+      const nearGate = PORTAL_ANGLES_DEG.some(
+        (g) => angleDiffDeg(deg, g) <= CHAMBER.gateHalfAngleDeg + WALL_STEP_DEG / 2,
+      );
+      if (nearGate) continue;
+      const a = deg * DEG;
+      out.push({ x: Math.sin(a) * CHAMBER.wallRadius, z: Math.cos(a) * CHAMBER.wallRadius, rot: a });
+    }
+    return out;
+  }, []);
+
+  // Gate pylons flanking each portal opening (mirrors PortalChamber.GateFrames).
+  const gatePylons = useMemo(() => {
+    const r = CHAMBER.wallRadius;
+    const delta = CHAMBER.gateHalfAngleDeg * DEG;
+    return PORTAL_ANGLES_DEG.flatMap((deg) => {
+      const a = deg * DEG;
+      return [
+        { x: Math.sin(a - delta) * r, z: Math.cos(a - delta) * r, rot: a },
+        { x: Math.sin(a + delta) * r, z: Math.cos(a + delta) * r, rot: a },
+      ];
+    });
+  }, []);
 
   return (
     <group name="nexus-plaza">
@@ -58,6 +94,24 @@ export default function NexusPlaza() {
             key={`column-col-${i}`}
             args={[CHAMBER.columnHeight / 2, CHAMBER.columnRadiusXZ]}
             position={p}
+          />
+        ))}
+        {/* portal chamber walls — block every arc except the gate openings */}
+        {wallPanels.map((p, i) => (
+          <CuboidCollider
+            key={`wall-col-${i}`}
+            args={[WALL_PANEL_WIDTH / 2, CHAMBER.wallHeight / 2, 1]}
+            position={[p.x, CHAMBER.wallHeight / 2, p.z]}
+            rotation={[0, p.rot, 0]}
+          />
+        ))}
+        {/* gate pylons flanking each portal */}
+        {gatePylons.map((p, i) => (
+          <CuboidCollider
+            key={`gate-col-${i}`}
+            args={[2.5, CHAMBER.gateHeight / 2, 2.5]}
+            position={[p.x, CHAMBER.gateHeight / 2, p.z]}
+            rotation={[0, p.rot, 0]}
           />
         ))}
       </RigidBody>
