@@ -253,23 +253,32 @@ export default function CyberpunkWorld({ config }: { config: WorldConfig }) {
     }));
   }, [towers, seed]);
 
-  // Elevated highways: thick flat boxes crossing the city at varied heights.
+  // Elevated highways: thick flat decks crossing the city at varied heights,
+  // each carried by a row of support pylons down to the street so they read as
+  // real infrastructure rather than slabs floating in mid-air.
   const highways = useMemo(() => {
     const rng = mulberry32(seed ^ 0x81687a);
     const out: {
       pos: [number, number, number];
       size: [number, number, number];
-      rot: number;
+      horizontal: boolean;
+      y: number;
+      pylons: number[];
     }[] = [];
     const span = extent * 2.6;
     for (let i = 0; i < 5; i++) {
       const horizontal = i % 2 === 0;
       const offset = (rng() - 0.5) * extent * 1.4;
       const y = 28 + rng() * 60;
+      const count = 5;
+      // pylon offsets along the deck's long axis
+      const pylons = Array.from({ length: count }, (_, k) => (k / (count - 1) - 0.5) * span * 0.9);
       out.push({
         pos: horizontal ? [0, y, offset] : [offset, y, 0],
         size: horizontal ? [span, 1.5, 9] : [9, 1.5, span],
-        rot: 0,
+        horizontal,
+        y,
+        pylons,
       });
     }
     return out;
@@ -377,18 +386,25 @@ export default function CyberpunkWorld({ config }: { config: WorldConfig }) {
         </mesh>
       </group>
 
-      {/* Elevated highways crossing between buildings */}
+      {/* Elevated highways crossing between buildings, on support pylons */}
       {highways.map((hw, i) => (
         <group key={`hw-${i}`} position={hw.pos}>
           <mesh castShadow receiveShadow>
             <boxGeometry args={hw.size} />
             <meshStandardMaterial color="#0e1320" metalness={0.7} roughness={0.5} emissive={palette.secondary} emissiveIntensity={0.06} />
           </mesh>
-          {/* Glowing lane lines */}
+          {/* Glowing lane line running the length of the deck */}
           <mesh position={[0, hw.size[1] / 2 + 0.05, 0]}>
-            <boxGeometry args={[hw.size[0] * 0.96, 0.05, hw.size[2] * 0.12]} />
+            <boxGeometry args={hw.horizontal ? [hw.size[0] * 0.98, 0.05, 0.5] : [0.5, 0.05, hw.size[2] * 0.98]} />
             <meshBasicMaterial color={palette.accent} />
           </mesh>
+          {/* Support pylons down to the street */}
+          {hw.pylons.map((d, k) => (
+            <mesh key={k} position={hw.horizontal ? [d, -hw.y / 2, 0] : [0, -hw.y / 2, d]} castShadow>
+              <boxGeometry args={[2.5, hw.y, 2.5]} />
+              <meshStandardMaterial color="#0c1018" metalness={0.6} roughness={0.6} />
+            </mesh>
+          ))}
         </group>
       ))}
 

@@ -4,22 +4,23 @@
  * VoidWorld — a corrupted, broken reality (Control / Tron / Interstellar).
  *
  * No ground. The player traverses floating island platforms suspended in a
- * near-black, purple-tinted void while the world itself comes apart: shattered
- * architecture drifts past, reality tears bleed light, gravity anomalies drag
- * debris into slow orbits, and impossible Möbius structures fold through
- * themselves. A colossal Reality Fracture Tower spears the dark at the center,
- * visible from anywhere.
+ * near-black, purple-tinted void while the world itself comes apart: the
+ * shattered remains of a great ring that once encircled the central tower
+ * drift in a broken annulus, reality tears bleed light, gravity anomalies drag
+ * wreckage into slow orbits, and two impossible Möbius monuments fold through
+ * themselves beside the tower. A colossal Reality Fracture Tower spears the
+ * dark at the center, visible from anywhere.
  *
  * Derived from the Normie (the core rule still holds):
  *   - Each playable platform's XZ position comes from an "on" block of the
  *     bitmap, so the archipelago is literally the Normie's silhouette.
  *   - Platform float heights are seeded deterministically from the pixel seed.
  *   - A guaranteed central spawn platform anchors the player at the origin.
- *   - All decorative chaos (fragments, tears, debris, anomalies) is seeded from
- *     `config.seed`, so the same Normie always shatters reality the same way.
+ *   - All decorative chaos (ring fragments, tears, anomalies, monuments) is
+ *     seeded from `config.seed`, so the same Normie shatters reality the same way.
  *
  * Physics: every PLAYABLE platform is a solid cuboid collider. Everything else
- * (fragments, tower, tears, debris, anomalies, storm) is purely visual and
+ * (fragments, tower, tears, anomalies, storm) is purely visual and
  * non-colliding. Gaps = the void; falling respawns the player.
  */
 import { useMemo, useRef } from "react";
@@ -33,7 +34,6 @@ import { HiddenCache } from "./WorldPrimitives";
 import { VOID_PLATFORM } from "./worldConstants";
 
 const STORM_COUNT = 2000;
-const DEBRIS_COUNT = 64;
 const PURPLE = "#a855f7";
 const CYAN = "#22d3ee";
 const WHITE = "#eef0ff";
@@ -221,28 +221,43 @@ function CorruptionWaves() {
 }
 
 /**
- * Broken architecture — tilted wall pieces and floating floor slabs torn from
- * some vanished structure, drifting and rotating slowly through the void.
+ * Broken architecture — the shattered remains of one great ring that once
+ * encircled the Fracture Tower. Fragments sit in a broken annulus (with whole
+ * arcs missing) at a consistent height band, each piece flung slightly in/out
+ * and tilted radially, so the void reads as the wreckage of a single former
+ * structure rather than a uniform scatter. Pieces drift-rotate slowly.
  */
 function BrokenArchitecture({ seed, extent }: { seed: number; extent: number }) {
   const groupRef = useRef<THREE.Group>(null);
   const fragments = useMemo(() => {
     const rng = mulberry32(seed ^ 0xb20be7);
-    return Array.from({ length: 22 }, () => {
-      const ang = rng() * Math.PI * 2;
-      const dist = extent * (0.25 + rng() * 0.85);
-      const wall = rng() > 0.45;
-      return {
-        x: Math.cos(ang) * dist,
-        y: -10 + rng() * 60,
-        z: Math.sin(ang) * dist,
+    const SLOTS = 30;
+    const ringR = extent * 0.5;
+    const out: {
+      x: number;
+      y: number;
+      z: number;
+      size: [number, number, number];
+      rot: [number, number, number];
+      spin: number;
+    }[] = [];
+    for (let i = 0; i < SLOTS; i++) {
+      if (rng() > 0.78) continue; // ~1 in 5 slots missing → a broken ring, not a clean one
+      const a = (i / SLOTS) * Math.PI * 2 + (rng() - 0.5) * 0.15;
+      const r = ringR + (rng() - 0.5) * extent * 0.18; // flung in/out from the ring line
+      const wall = rng() > 0.5;
+      out.push({
+        x: Math.cos(a) * r,
+        y: 6 + Math.sin(a * 3 + i) * 5 + rng() * 8, // low band, gently undulating
+        z: Math.sin(a) * r,
         size: wall
-          ? ([2 + rng() * 5, 8 + rng() * 16, 0.8 + rng() * 1.2] as [number, number, number]) // tilted wall
-          : ([6 + rng() * 12, 0.8 + rng() * 1.2, 6 + rng() * 12] as [number, number, number]), // floor slab
-        rot: [(rng() - 0.5) * 1.4, rng() * Math.PI * 2, (rng() - 0.5) * 1.4] as [number, number, number],
-        spin: (rng() - 0.5) * 0.06,
-      };
-    });
+          ? ([3 + rng() * 4, 8 + rng() * 14, 1 + rng() * 1.2] as [number, number, number]) // standing wall section
+          : ([7 + rng() * 8, 1 + rng() * 1.2, 5 + rng() * 6] as [number, number, number]), // floor slab
+        rot: [(rng() - 0.5) * 0.8, a + Math.PI / 2, (rng() - 0.5) * 0.9] as [number, number, number], // tilt radial to the ring
+        spin: (rng() - 0.5) * 0.035,
+      });
+    }
+    return out;
   }, [seed, extent]);
 
   useFrame((_, dt) => {
@@ -322,53 +337,6 @@ function RealityTears({ seed, extent }: { seed: number; extent: number }) {
             side={THREE.DoubleSide}
             blending={THREE.AdditiveBlending}
             depthWrite={false}
-          />
-        </mesh>
-      ))}
-    </group>
-  );
-}
-
-/** Floating debris — 60+ small fragments slowly drifting upward, wrapping back. */
-function FloatingDebris({ seed, extent }: { seed: number; extent: number }) {
-  const groupRef = useRef<THREE.Group>(null);
-  const debris = useMemo(() => {
-    const rng = mulberry32(seed ^ 0xdeb215);
-    return Array.from({ length: DEBRIS_COUNT }, () => ({
-      x: (rng() - 0.5) * extent * 2.2,
-      y: -30 + rng() * 120,
-      z: (rng() - 0.5) * extent * 2.2,
-      s: 0.4 + rng() * 1.6,
-      rise: 0.04 + rng() * 0.12,
-      spin: (rng() - 0.5) * 0.04,
-      cyan: rng() > 0.6,
-    }));
-  }, [seed, extent]);
-  const top = 95;
-  const bottom = -35;
-
-  useFrame((_, dt) => {
-    const g = groupRef.current;
-    if (!g) return;
-    g.children.forEach((c, i) => {
-      c.position.y += debris[i].rise * dt * 60;
-      c.rotation.x += debris[i].spin * dt * 30;
-      c.rotation.y += debris[i].spin * dt * 30;
-      if (c.position.y > top) c.position.y = bottom;
-    });
-  });
-
-  return (
-    <group ref={groupRef} name="floating-debris">
-      {debris.map((d, i) => (
-        <mesh key={i} position={[d.x, d.y, d.z]} scale={d.s}>
-          <boxGeometry args={[1, 1, 1]} />
-          <meshStandardMaterial
-            color="#241a3a"
-            metalness={0.6}
-            roughness={0.35}
-            emissive={d.cyan ? CYAN : PURPLE}
-            emissiveIntensity={0.3}
           />
         </mesh>
       ))}
@@ -500,8 +468,10 @@ function GravityAnomalies({ seed, extent }: { seed: number; extent: number }) {
 }
 
 /**
- * Impossible geometry — Möbius-strip ribbons (custom geometry) folding through
- * themselves, slowly tumbling. Glitch flashes are driven on these from above.
+ * Impossible geometry — two large Möbius monuments (custom single-sided ribbon
+ * geometry) folding through themselves, set deliberately at mid-height flanking
+ * the Fracture Tower like sentinels rather than scattered to the horizon. They
+ * tumble slowly; glitch flashes are driven on these from above.
  */
 function ImpossibleStructures({
   seed,
@@ -513,20 +483,20 @@ function ImpossibleStructures({
   flashRefs: React.MutableRefObject<(THREE.MeshStandardMaterial | null)[]>;
 }) {
   const groupRef = useRef<THREE.Group>(null);
-  const geos = useMemo(() => [makeMobius(7, 3), makeMobius(10, 4, 160, 12), makeMobius(5, 2.4)], []);
+  const geos = useMemo(() => [makeMobius(9, 4, 160, 12), makeMobius(6, 3)], []);
   const structs = useMemo(() => {
     const rng = mulberry32(seed ^ 0x303b18);
-    return Array.from({ length: 4 }, (_, i) => {
-      const ang = rng() * Math.PI * 2;
-      const dist = extent * (0.45 + rng() * 0.7);
+    return Array.from({ length: 2 }, (_, i) => {
+      const ang = (i / 2) * Math.PI * 2 + rng() * 0.6; // roughly opposite, flanking the tower
+      const dist = extent * 0.32;
       return {
         x: Math.cos(ang) * dist,
-        y: 14 + rng() * 50,
+        y: 34 + i * 24 + rng() * 8,
         z: Math.sin(ang) * dist,
-        scale: 1 + rng() * 1.6,
+        scale: 1.7 + rng() * 0.7,
         spin: [(rng() - 0.5) * 0.3, (rng() - 0.5) * 0.3, (rng() - 0.5) * 0.3] as [number, number, number],
-        geo: geos[i % geos.length],
-        cyan: rng() > 0.5,
+        geo: geos[i],
+        cyan: i % 2 === 0,
       };
     });
   }, [seed, extent, geos]);
@@ -617,7 +587,6 @@ export default function VoidWorld({ config }: { config: WorldConfig }) {
       {/* Corrupted reality decor */}
       <BrokenArchitecture seed={seed} extent={extent} />
       <RealityTears seed={seed} extent={extent} />
-      <FloatingDebris seed={seed} extent={extent} />
       <GravityAnomalies seed={seed} extent={extent} />
       <ImpossibleStructures seed={seed} extent={extent} flashRefs={flashRefs} />
       <GlitchDriver flashRefs={flashRefs} />
