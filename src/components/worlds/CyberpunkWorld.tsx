@@ -150,6 +150,33 @@ interface Tower {
   emissive: string;
 }
 
+/**
+ * Sky beam — a tall, thin emissive cylinder shooting straight up from the
+ * megatower roof. Additive + pulsing so it reads as a column of light against
+ * the night sky: the first thing the player sees at spawn and a natural "walk
+ * toward me" beacon pointing to the landmark.
+ */
+function SkyBeam({ color }: { color: string }) {
+  const ref = useRef<THREE.Mesh>(null);
+  useFrame((s) => {
+    if (!ref.current) return;
+    (ref.current.material as THREE.MeshBasicMaterial).opacity = 0.4 + Math.sin(s.clock.elapsedTime * 2) * 0.15;
+  });
+  return (
+    <mesh ref={ref} position={[0, 560, 0]} frustumCulled={false}>
+      <cylinderGeometry args={[2.5, 4.5, 520, 12, 1, true]} />
+      <meshBasicMaterial
+        color={color}
+        transparent
+        opacity={0.45}
+        side={THREE.DoubleSide}
+        blending={THREE.AdditiveBlending}
+        depthWrite={false}
+      />
+    </mesh>
+  );
+}
+
 /** Architecture theme → silhouette hints. */
 function themeShape(architecture: string): { taper: number; cap: boolean } {
   switch (architecture) {
@@ -341,6 +368,8 @@ export default function CyberpunkWorld({ config }: { config: WorldConfig }) {
           <meshBasicMaterial color={palette.accent} />
         </mesh>
         <pointLight position={[0, 348, 0]} color={palette.accent} intensity={6} distance={400} />
+        {/* Vertical light beam shooting up from the roof — visible from spawn */}
+        <SkyBeam color={palette.accent} />
         {/* Giant corporate hologram band */}
         <mesh position={[0, 220, 22.3]}>
           <planeGeometry args={[40, 80]} />

@@ -179,6 +179,48 @@ function FractureTower() {
 }
 
 /**
+ * Corruption waves — flat TorusGeometry rings that emanate from the Reality
+ * Fracture Tower base, expanding outward and fading as they go. Staggered so a
+ * wave is always pulsing at the world's center, drawing the eye (and the
+ * player) toward the landmark from anywhere at spawn.
+ */
+function CorruptionWaves() {
+  const N = 5;
+  const refs = useRef<(THREE.Mesh | null)[]>([]);
+  useFrame((s) => {
+    const t = s.clock.elapsedTime;
+    refs.current.forEach((m, i) => {
+      if (!m) return;
+      const phase = (t * 0.22 + i / N) % 1;
+      const scale = 2 + phase * 70;
+      m.scale.set(scale, scale, scale);
+      (m.material as THREE.MeshBasicMaterial).opacity = (1 - phase) * 0.6;
+    });
+  });
+  return (
+    <group name="corruption-waves" position={[0, 1.2, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+      {Array.from({ length: N }).map((_, i) => (
+        <mesh
+          key={i}
+          ref={(m) => {
+            refs.current[i] = m;
+          }}
+        >
+          <torusGeometry args={[1, 0.05, 8, 64]} />
+          <meshBasicMaterial
+            color={i % 2 ? CYAN : PURPLE}
+            transparent
+            opacity={0.5}
+            blending={THREE.AdditiveBlending}
+            depthWrite={false}
+          />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+/**
  * Broken architecture — tilted wall pieces and floating floor slabs torn from
  * some vanished structure, drifting and rotating slowly through the void.
  */
@@ -562,6 +604,7 @@ export default function VoidWorld({ config }: { config: WorldConfig }) {
 
       {/* Central landmark — always visible */}
       <FractureTower />
+      <CorruptionWaves />
 
       {/* Guaranteed central spawn platform */}
       <Platform position={[0, 0, 0]} color={palette.primary} edge={palette.accent} />

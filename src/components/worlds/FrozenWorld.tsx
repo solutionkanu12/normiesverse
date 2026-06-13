@@ -481,6 +481,56 @@ function AncientIceTemple({ extent, accent }: { extent: number; accent: string }
   );
 }
 
+/**
+ * Temple aurora — 4 flat transparent curtains hovering directly above the
+ * Ancient Ice Temple, their emissive color drifting between aurora green and
+ * ice blue. Tall and bright against the deep-navy sky, it crowns the landmark
+ * so the temple is the first thing a player sees and is drawn toward at spawn.
+ */
+const AURORA_GREEN = new THREE.Color("#00ff9d");
+const AURORA_BLUE = new THREE.Color("#4fc3f7");
+
+function TempleAurora({ extent }: { extent: number }) {
+  const refs = useRef<(THREE.Mesh | null)[]>([]);
+  const ribbons = useMemo(
+    () => Array.from({ length: 4 }, (_, i) => ({ y: 120 + i * 18, w: 110 - i * 12, phase: i * 1.1 })),
+    [],
+  );
+  useFrame((s) => {
+    const t = s.clock.elapsedTime;
+    refs.current.forEach((m, i) => {
+      if (!m) return;
+      const mat = m.material as THREE.MeshBasicMaterial;
+      const k = 0.5 + 0.5 * Math.sin(t * 0.5 + ribbons[i].phase);
+      mat.color.copy(AURORA_GREEN).lerp(AURORA_BLUE, k);
+      mat.opacity = 0.22 + 0.18 * Math.sin(t * 0.8 + ribbons[i].phase);
+      m.position.x = Math.sin(t * 0.3 + ribbons[i].phase) * 26;
+    });
+  });
+  return (
+    <group name="temple-aurora" position={[0, 0, -extent * 1.05]}>
+      {ribbons.map((r, i) => (
+        <mesh
+          key={i}
+          position={[0, r.y, 0]}
+          ref={(m) => {
+            refs.current[i] = m;
+          }}
+        >
+          <planeGeometry args={[r.w, 50, 1, 1]} />
+          <meshBasicMaterial
+            transparent
+            opacity={0.3}
+            side={THREE.DoubleSide}
+            blending={THREE.AdditiveBlending}
+            depthWrite={false}
+          />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
 export default function FrozenWorld({ config }: { config: WorldConfig }) {
   const { palette, placements, extent, density } = config;
 
@@ -521,6 +571,7 @@ export default function FrozenWorld({ config }: { config: WorldConfig }) {
       <TempleRuins extent={extent} accent={palette.accent} />
       <FrozenStatues extent={extent} accent={palette.accent} />
       <AncientIceTemple extent={extent} accent={palette.accent} />
+      <TempleAurora extent={extent} />
 
       {/* Crystal formations (thin tall emissive shards from the bitmap) */}
       {crystals.map((c, i) => (
