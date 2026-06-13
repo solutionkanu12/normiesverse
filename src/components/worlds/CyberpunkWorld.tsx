@@ -297,10 +297,10 @@ export default function CyberpunkWorld({ config }: { config: WorldConfig }) {
       <directionalLight color={palette.key} intensity={0.9} position={[80, 200, -120]} castShadow />
       <hemisphereLight args={[palette.secondary, "#05060d", 0.5]} />
 
-      {/* Wet street ground: reflective plane + solid collider */}
+      {/* Dark asphalt street ground (wet city look) + solid collider */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} receiveShadow>
         <planeGeometry args={[extent * 3.2, extent * 3.2]} />
-        <meshStandardMaterial color="#0a0d16" metalness={0.9} roughness={0.18} envMapIntensity={0.7} />
+        <meshStandardMaterial color="#1a1a1a" metalness={0.5} roughness={0.5} envMapIntensity={0.5} />
       </mesh>
       <GroundCollider extent={extent} />
 
@@ -332,9 +332,6 @@ export default function CyberpunkWorld({ config }: { config: WorldConfig }) {
           <CuboidCollider key={`sfc-${i}`} args={[2, 0.7, 0.15]} position={[s.x, s.h, s.z]} />
         ))}
       </RigidBody>
-
-      {/* Glowing street grid inlay */}
-      <gridHelper args={[extent * 2.8, 48, palette.accent, palette.secondary]} position={[0, 0.05, 0]} />
 
       {/* Skyscrapers (city blocks) */}
       {towers.map((t, i) => {
