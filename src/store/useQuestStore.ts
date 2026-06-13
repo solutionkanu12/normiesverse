@@ -28,10 +28,18 @@ export interface QuestDialogue {
   text: string;
 }
 
+/** A completion requested before its quest was registered (see {@link QuestState.completeObjective}). */
+interface PendingCompletion {
+  questId: string;
+  objectiveId: string;
+}
+
 export interface QuestState {
   quests: Quest[];
   rewardScreen: RewardScreenData | null;
   dialogue: QuestDialogue | null;
+  /** Completions requested for quests not yet registered via setQuestsForWorld. */
+  pendingCompletions: PendingCompletion[];
 
   /** Replace all quests for one world (called once after generation). */
   setQuestsForWorld: (kind: WorldKind, quests: Quest[]) => void;
@@ -50,6 +58,7 @@ const initial = {
   quests: [] as Quest[],
   rewardScreen: null as RewardScreenData | null,
   dialogue: null as QuestDialogue | null,
+  pendingCompletions: [] as PendingCompletion[],
 };
 
 /** A quest with no `locked` status is "completed" once every objective is done. */
@@ -59,24 +68,46 @@ function recomputeStatus(q: Quest): Quest {
   return allDone && q.status !== "completed" ? { ...q, status: "completed" } : q;
 }
 
+/** Mark `objectiveId` fully done on `q` and recompute its status. */
+function markObjectiveDone(q: Quest, objectiveId: string): Quest {
+  const objectives = q.objectives.map((o) =>
+    o.id === objectiveId ? { ...o, done: true, consumedTargets: o.targets.map((_, i) => i) } : o,
+  );
+  return recomputeStatus({ ...q, objectives });
+}
+
 export const useQuestStore = create<QuestState>((set) => ({
   ...initial,
 
   setQuestsForWorld: (kind, quests) =>
-    set((s) => ({ quests: [...s.quests.filter((q) => q.worldKind !== kind), ...quests] })),
+    set((s) => {
+      // Apply any completions that arrived before these quests were registered
+      // (e.g. the Reality Core was reached before /history + /canvas/diff resolved).
+      const resolved = quests.map((q) => {
+        const matches = s.pendingCompletions.filter((p) => p.questId === q.id);
+        return matches.reduce((acc, p) => markObjectiveDone(acc, p.objectiveId), q);
+      });
+      const pendingCompletions = s.pendingCompletions.filter(
+        (p) => !resolved.some((q) => q.id === p.questId),
+      );
+      return {
+        quests: [...s.quests.filter((q) => q.worldKind !== kind), ...resolved],
+        pendingCompletions,
+      };
+    }),
 
   completeObjective: (questId, objectiveId) =>
-    set((s) => ({
-      quests: s.quests.map((q) => {
-        if (q.id !== questId) return q;
-        const objectives = q.objectives.map((o) =>
-          o.id === objectiveId
-            ? { ...o, done: true, consumedTargets: o.targets.map((_, i) => i) }
-            : o,
-        );
-        return recomputeStatus({ ...q, objectives });
-      }),
-    })),
+    set((s) => {
+      const target = s.quests.find((q) => q.id === questId);
+      if (!target) {
+        // Quest not registered yet — remember this completion for setQuestsForWorld.
+        if (s.pendingCompletions.some((p) => p.questId === questId && p.objectiveId === objectiveId)) return s;
+        return { pendingCompletions: [...s.pendingCompletions, { questId, objectiveId }] };
+      }
+      return {
+        quests: s.quests.map((q) => (q.id === questId ? markObjectiveDone(q, objectiveId) : q)),
+      };
+    }),
 
   incrementObjectiveProgress: (questId, objectiveId, targetIndex) =>
     set((s) => ({
