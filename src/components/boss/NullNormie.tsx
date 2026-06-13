@@ -92,8 +92,12 @@ export default function NullNormie({ bossRef, build, stats, onDissolved }: NullN
     if (d > 0.001) {
       _flee.normalize();
       // Orbit component so it circles the arena instead of hugging the rim.
-      _flee.x += -_flee.z * 0.5;
-      _flee.z += _flee.x * 0.5;
+      // Compute the perpendicular from the ORIGINAL normalized x/z (saving them
+      // first) so the second axis isn't derived from the already-mutated x.
+      const ox = _flee.x;
+      const oz = _flee.z;
+      _flee.x = ox - oz * 0.5;
+      _flee.z = oz + ox * 0.5;
       _flee.normalize();
       b.pos.addScaledVector(_flee, stats.speed * dt);
     }
