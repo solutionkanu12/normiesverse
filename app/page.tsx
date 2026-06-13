@@ -12,6 +12,20 @@ const LandingScene = dynamic(() => import("@/components/landing/LandingScene"), 
 const PRIMARY_BTN_CLIP =
   "polygon(12px 0%,100% 0%,100% calc(100% - 12px),calc(100% - 12px) 100%,0% 100%,0% 12px)";
 
+// Verbatim lore — kept as string literals so the exact wording (apostrophes,
+// em-dashes) is preserved and never touched by JSX entity handling.
+const LORE_PARAGRAPHS = [
+  "Nobody knows exactly when the fractures started.",
+  "One day the Nexus was fine. A massive space station sitting at the center of everything, connecting 10,000 realities — one for every Normie that ever existed. Then the cores started going dark.",
+  "The Reality Cores are what hold each dimension together. Without them, a world collapses. Slowly at first — glitches in the sky, buildings that flicker, time that loops. Then nothing.",
+  "Someone — or something — has been pulling them out.",
+  "The Normies call it the Null Normie. Nobody has seen it clearly. What they know is this: it moves like one of them, it knows the worlds better than it should, and it only shows up after a core goes missing. Some say it was a Normie once. One that got burned. One that came back wrong.",
+  "You are a Reality Walker. The Nexus picked you — not randomly. Your Normie's data, its traits, its history, the things it has done on-chain — all of it pointed here. The station read you and opened a door.",
+  "Three realities are already breaking. Cyberpunk is losing power block by block. The Frozen World's ancient temples are cracking under something that isn't cold. The Digital Void is folding in on itself.",
+  "You have to go in. Pull the cores. Come back.",
+  "And when the Null Normie finally shows its face — finish it.",
+];
+
 export default function HomePage() {
   return (
     <div className="relative">
@@ -37,6 +51,12 @@ export default function HomePage() {
             className="hidden sm:inline font-sans text-xs font-medium tracking-[0.08em] uppercase text-[#8090b0] hover:text-white transition-colors"
           >
             Realities
+          </a>
+          <a
+            href="#lore"
+            className="hidden sm:inline font-sans text-xs font-medium tracking-[0.08em] uppercase text-[#8090b0] hover:text-white transition-colors"
+          >
+            Story
           </a>
           <a
             href="#mission"
@@ -159,6 +179,36 @@ export default function HomePage() {
             name="Digital Void"
             desc="No ground. No sky. Alien Normies were born for this nothingness."
           />
+        </div>
+      </section>
+
+      {/* ── Lore / The Story So Far ──────────────────────────────────── */}
+      <section id="lore" className="relative px-6 sm:px-16 py-32 sm:py-40 bg-[#03040a]/95">
+        {/* cinematic top + bottom fades so it reads as an interlude, not a card */}
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-transparent to-[#03040a]/95" />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-transparent to-[#03040a]/95" />
+
+        <div className="relative max-w-3xl text-left">
+          <p className="font-hud text-xs tracking-[0.3em] text-[#4fc3f7]/60 uppercase mb-5">
+            Transmission // Nexus Archive
+          </p>
+          <h2 className="font-display text-[clamp(2.4rem,5.5vw,4.5rem)] leading-[0.95] text-[#4fc3f7] mb-12">
+            THE STORY SO FAR
+          </h2>
+          <div className="flex flex-col gap-7">
+            {LORE_PARAGRAPHS.map((para, i) => (
+              <p
+                key={i}
+                className={
+                  i === LORE_PARAGRAPHS.length - 1
+                    ? "text-white text-lg sm:text-2xl leading-relaxed font-normal"
+                    : "text-[#aebbd6] text-base sm:text-xl leading-relaxed font-light"
+                }
+              >
+                {para}
+              </p>
+            ))}
+          </div>
         </div>
       </section>
 
