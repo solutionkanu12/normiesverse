@@ -17,6 +17,7 @@ import { usePlayerStore } from "@/store/usePlayerStore";
 import { useNormieStore } from "@/store/useNormieStore";
 import { useQuestStore } from "@/store/useQuestStore";
 import { useWorldStore } from "@/store/useWorldStore";
+import { useAchievementStore } from "@/store/useAchievementStore";
 import AchievementsPanel from "./AchievementsPanel";
 
 export default function PauseMenu() {
@@ -68,6 +69,7 @@ export default function PauseMenu() {
     useGameStore.getState().reset();
     useWorldStore.getState().reset();
     useNormieStore.getState().reset();
+    useAchievementStore.getState().reset();
   };
 
   return (

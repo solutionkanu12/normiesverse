@@ -10,6 +10,7 @@ import { usePlayerStore } from "@/store/usePlayerStore";
 import { useQuestStore } from "@/store/useQuestStore";
 import { useGameStore } from "@/store/useGameStore";
 import { useWorldStore } from "@/store/useWorldStore";
+import { useAchievementStore } from "@/store/useAchievementStore";
 import NormieCard from "@/components/selection/NormieCard";
 import NormiePreview from "@/components/selection/NormiePreview";
 import type { PreviewData } from "@/components/selection/types";
@@ -103,6 +104,7 @@ export default function SelectPage() {
     useGameStore.getState().reset();
     useWorldStore.getState().reset();
     useNormieStore.getState().reset();
+    useAchievementStore.getState().reset();
 
     setNormieId(preview.id);
     setNormieData({
