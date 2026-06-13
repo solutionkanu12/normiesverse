@@ -43,6 +43,14 @@ export default function SelectPage() {
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
 
+  // Notice shown when a game route bounced the player here for not being connected.
+  const [notice, setNotice] = useState<string | null>(null);
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("notice") === "wallet") {
+      setNotice("Connect your wallet to enter the Nexus");
+    }
+  }, []);
+
   // Auto-switch to "My Normies" when holdings arrive — unless user already
   // manually picked a tab or started typing an ID.
   useEffect(() => {
@@ -129,6 +137,13 @@ export default function SelectPage() {
         </span>
         <ConnectButton />
       </header>
+
+      {/* Wallet-required notice (set when a game route bounced the player here) */}
+      {notice && (
+        <div className="border-b border-[#4fc3f7]/25 bg-[#4fc3f7]/10 px-5 py-3 text-center text-sm text-[#4fc3f7]">
+          {notice}
+        </div>
+      )}
 
       {/* ── Hero ───────────────────────────────────────────────────────── */}
       <div className="px-5 py-10 text-center border-b border-white/[0.04]">

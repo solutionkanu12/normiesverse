@@ -1,7 +1,10 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useAccount } from "wagmi";
 import { CORE_ID } from "@/systems/world/WorldFactory";
 import { useNormieStore } from "@/store/useNormieStore";
 import { usePlayerStore } from "@/store/usePlayerStore";
@@ -23,6 +26,14 @@ const ALL_CORES = Object.values(CORE_ID);
  * three Reality Cores recovered.
  */
 export default function BossPage() {
+  const router = useRouter();
+  const { isConnected, status } = useAccount();
+
+  // Only evaluate wallet state after client mount (avoids hydration mismatch
+  // and a false redirect during wallet auto-reconnect on a fresh load).
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
   // Ensure the voxel avatar + stats are built from the selected Normie.
   usePlayerInit();
 
@@ -31,6 +42,17 @@ export default function BossPage() {
   const traits = useNormieStore((s) => s.traits);
   const avatar = usePlayerStore((s) => s.avatar);
   const realityCores = usePlayerStore((s) => s.realityCores);
+
+  // Block access without a connected wallet — bounce to /select with a notice.
+  const reconnecting = status === "connecting" || status === "reconnecting";
+  useEffect(() => {
+    if (mounted && !reconnecting && !isConnected) router.replace("/select?notice=wallet");
+  }, [mounted, reconnecting, isConnected, router]);
+
+  if (!mounted || reconnecting) {
+    return <LoadingScreen accent="#ff2233" label="Connecting wallet…" normieId={normieId} />;
+  }
+  if (!isConnected) return null;
 
   // No Normie selected — neither the Walker nor the Null can exist.
   if (normieId === null || !pixels || !traits) {

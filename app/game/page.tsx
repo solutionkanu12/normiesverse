@@ -1,7 +1,10 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useAccount } from "wagmi";
 import { useNormieStore } from "@/store/useNormieStore";
 import { usePlayerStore } from "@/store/usePlayerStore";
 import { usePlayerInit } from "@/hooks/usePlayerInit";
@@ -18,12 +21,31 @@ const NexusWorld = dynamic(() => import("@/components/nexus/NexusWorld"), {
  * Normie (Phase 4) and drops the player into the 3D space station (Phase 5).
  */
 export default function GamePage() {
+  const router = useRouter();
+  const { isConnected, status } = useAccount();
+
+  // Only evaluate wallet state after client mount (avoids hydration mismatch
+  // and a false redirect during wallet auto-reconnect on a fresh load).
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
   // Build avatar + stats from the selected Normie and save to usePlayerStore.
   usePlayerInit();
 
   const id = useNormieStore((s) => s.id);
   const avatar = usePlayerStore((s) => s.avatar);
   const level = usePlayerStore((s) => s.stats.level);
+
+  // Block access without a connected wallet — bounce to /select with a notice.
+  const reconnecting = status === "connecting" || status === "reconnecting";
+  useEffect(() => {
+    if (mounted && !reconnecting && !isConnected) router.replace("/select?notice=wallet");
+  }, [mounted, reconnecting, isConnected, router]);
+
+  if (!mounted || reconnecting) {
+    return <LoadingScreen accent="#4fc3f7" label="Connecting wallet…" normieId={id} />;
+  }
+  if (!isConnected) return null;
 
   if (id === null) {
     return (
