@@ -148,6 +148,10 @@ export default function WorldExperience({ kind, normieId, build }: WorldExperien
         nextWorldLabel,
       });
 
+      // Release the pointer lock so the player can click "Continue" right away
+      // (otherwise the cursor is captured and the button is unreachable).
+      if (typeof document !== "undefined") document.exitPointerLock?.();
+
       // Apply the reward to the player's stats — Action Points grow the energy
       // pool (cap included so the bar stays sensible), Experience accumulates.
       const ps = usePlayerStore.getState();

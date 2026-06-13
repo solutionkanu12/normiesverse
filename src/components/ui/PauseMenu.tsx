@@ -36,6 +36,10 @@ export default function PauseMenu() {
   const stats = usePlayerStore((s) => s.stats);
   const realityCores = usePlayerStore((s) => s.realityCores);
 
+  // The Reality Core reward screen takes priority — while it's open the pause
+  // menu is suppressed and Escape is ignored so it can't cover the reward.
+  const rewardOpen = useQuestStore((s) => s.rewardScreen !== null);
+
   // Leaving the gameplay routes implicitly closes the menu so a stale
   // `paused: true` doesn't freeze the next scene's PlayerController.
   useEffect(() => {
@@ -45,13 +49,13 @@ export default function PauseMenu() {
   useEffect(() => {
     if (!inGame) return;
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.code === "Escape") togglePause();
+      if (e.code === "Escape" && !rewardOpen) togglePause();
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [inGame, togglePause]);
+  }, [inGame, togglePause, rewardOpen]);
 
-  if (!inGame) return null;
+  if (!inGame || rewardOpen) return null;
 
   const close = () => setPaused(false);
 
