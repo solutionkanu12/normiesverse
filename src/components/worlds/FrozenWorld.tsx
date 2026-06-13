@@ -26,8 +26,8 @@ import type { WorldConfig } from "@/systems/world/worldTypes";
 import AmbientMotes from "@/components/shared/AmbientMotes";
 import { GroundCollider, HiddenCache } from "./WorldPrimitives";
 
-const SNOW_COUNT = 1200;
-const BLIZZARD_COUNT = 3000;
+const SNOW_COUNT = 600;
+const BLIZZARD_COUNT = 1500;
 
 function Snow({ extent, color }: { extent: number; color: string }) {
   const ref = useRef<THREE.Points>(null);

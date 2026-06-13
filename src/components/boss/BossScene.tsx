@@ -56,8 +56,7 @@ export default function BossScene({ build, stats, seed, onLockChange, onDissolve
 
   return (
     <Canvas
-      shadows
-      dpr={[1, 2]}
+      dpr={[1, 1.5]}
       gl={{ antialias: true, toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.05 }}
       camera={{ fov: 70, near: 0.1, far: 4000, position: [0, 6, ARENA.spawn[2] + 12] }}
     >
@@ -65,7 +64,7 @@ export default function BossScene({ build, stats, seed, onLockChange, onDissolve
       <fog attach="fog" args={[BOSS_COLORS.fog, 60, 320]} />
 
       <Suspense fallback={null}>
-        <Physics gravity={[0, -22, 0]}>
+        <Physics gravity={[0, -22, 0]} timeStep={1 / 60}>
           <BossArena />
           <PlayerController build={build} spawn={ARENA.spawn} frozen={paused} onLockChange={onLockChange} />
         </Physics>

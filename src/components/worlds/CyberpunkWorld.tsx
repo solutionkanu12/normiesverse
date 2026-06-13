@@ -22,7 +22,7 @@ import type { WorldConfig } from "@/systems/world/worldTypes";
 import AmbientMotes from "@/components/shared/AmbientMotes";
 import { GroundCollider, HiddenCache } from "./WorldPrimitives";
 
-const RAIN_COUNT = 2000;
+const RAIN_COUNT = 1000;
 
 /** Warm/cool office-window glow colors — small lit windows, not loud neon panels. */
 const WINDOW_LIT = ["#ffd9a0", "#ffe3b3", "#bfe2ff", "#cfeaff", "#fff0cf"];
@@ -207,7 +207,7 @@ function BuildingTower({ t }: { t: Tower }) {
 function StreetLamps({ extent, towers }: { extent: number; towers: Tower[] }) {
   const lamps = useMemo(() => {
     const out: [number, number][] = [];
-    const n = 5;
+    const n = 4;
     const reach = extent * 1.0;
     for (let i = 0; i < n; i++) {
       for (let j = 0; j < n; j++) {

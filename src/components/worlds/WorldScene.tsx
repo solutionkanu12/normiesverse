@@ -58,8 +58,7 @@ export default function WorldScene({ config, build, coreCollected, onCollectCore
 
   return (
     <Canvas
-      shadows
-      dpr={[1, 2]}
+      dpr={[1, 1.5]}
       gl={{ antialias: true, toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.05 }}
       camera={{ fov: 70, near: 0.1, far: 4000, position: [0, 6, config.spawn[2] + 12] }}
     >
@@ -67,7 +66,7 @@ export default function WorldScene({ config, build, coreCollected, onCollectCore
       <fog attach="fog" args={[palette.fog, palette.fogNear, palette.fogFar]} />
 
       <Suspense fallback={null}>
-        <Physics gravity={gravity}>
+        <Physics gravity={gravity} timeStep={1 / 60}>
           <WorldEnvironment config={config} />
 
           <GroundFog radius={config.extent} color={palette.fog} seed={config.seed ^ 0xf0e1} />

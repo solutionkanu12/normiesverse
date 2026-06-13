@@ -25,7 +25,7 @@ const TWO_PI = Math.PI * 2;
 
 function Starfield() {
   const positions = useMemo(() => {
-    const count = 6000;
+    const count = 3000;
     const arr = new Float32Array(count * 3);
     const rnd = mulberry32(1337);
     for (let i = 0; i < count; i++) {
@@ -115,9 +115,9 @@ function DustLayer({ count, spread, size, color, opacity, speed, seed }: DustCon
 function AtmosphericDust() {
   return (
     <>
-      <DustLayer count={900} spread={1400} size={2.2} color={NEXUS_COLORS.cyan} opacity={0.35} speed={0.03} seed={11} />
-      <DustLayer count={700} spread={1000} size={3.5} color={0x2a4a7a} opacity={0.25} speed={0.045} seed={22} />
-      <DustLayer count={500} spread={1800} size={1.4} color={NEXUS_COLORS.gold} opacity={0.18} speed={0.05} seed={33} />
+      <DustLayer count={450} spread={1400} size={2.2} color={NEXUS_COLORS.cyan} opacity={0.35} speed={0.03} seed={11} />
+      <DustLayer count={350} spread={1000} size={3.5} color={0x2a4a7a} opacity={0.25} speed={0.045} seed={22} />
+      <DustLayer count={250} spread={1800} size={1.4} color={NEXUS_COLORS.gold} opacity={0.18} speed={0.05} seed={33} />
     </>
   );
 }
@@ -132,7 +132,7 @@ function DistantTowers() {
 
   const towers = useMemo(() => {
     const rnd = mulberry32(7);
-    return Array.from({ length: 14 }, (_, i) => {
+    return Array.from({ length: 8 }, (_, i) => {
       const a = rnd() * TWO_PI;
       const dist = 380 + rnd() * 520;
       const h = 80 + rnd() * 340;
@@ -334,7 +334,7 @@ function ShipFleet() {
 
   const ships: ShipData[] = useMemo(() => {
     const rnd = mulberry32(99);
-    return Array.from({ length: 14 }, () => {
+    return Array.from({ length: 8 }, () => {
       const dir = rnd() > 0.5 ? 1 : -1;
       return {
         angle: rnd() * TWO_PI,
@@ -419,7 +419,7 @@ function Debris() {
   const refs = useRef<(THREE.Mesh | null)[]>([]);
   const items = useMemo(() => {
     const rnd = mulberry32(555);
-    return Array.from({ length: 40 }, () => {
+    return Array.from({ length: 20 }, () => {
       const sz = 1 + rnd() * 5;
       return {
         pos: [(rnd() - 0.5) * 700, (rnd() - 0.5) * 300 + 60, (rnd() - 0.5) * 700] as [number, number, number],

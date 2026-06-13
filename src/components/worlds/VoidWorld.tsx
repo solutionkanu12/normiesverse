@@ -33,7 +33,7 @@ import AmbientMotes from "@/components/shared/AmbientMotes";
 import { HiddenCache } from "./WorldPrimitives";
 import { VOID_PLATFORM } from "./worldConstants";
 
-const STORM_COUNT = 2000;
+const STORM_COUNT = 1000;
 const PURPLE = "#a855f7";
 const CYAN = "#22d3ee";
 const WHITE = "#eef0ff";

@@ -105,8 +105,7 @@ export default function NexusWorld({ build, level }: NexusWorldProps) {
         transition={{ duration: 0.7, ease: "easeIn" }}
       >
         <Canvas
-          shadows
-          dpr={[1, 2]}
+          dpr={[1, 1.5]}
           gl={{
             antialias: true,
             toneMapping: THREE.ACESFilmicToneMapping,
@@ -119,7 +118,7 @@ export default function NexusWorld({ build, level }: NexusWorldProps) {
 
           <Suspense fallback={null}>
             {/* Physics world: only the plaza + player have colliders */}
-            <Physics gravity={[0, -26, 0]}>
+            <Physics gravity={[0, -26, 0]} timeStep={1 / 60}>
               <NexusPlaza />
               <PlayerController
                 build={build}
