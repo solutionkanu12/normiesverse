@@ -24,8 +24,8 @@ import { GroundCollider, HiddenCache } from "./WorldPrimitives";
 
 const RAIN_COUNT = 2000;
 
-/** A neon palette for storefronts / window glow — classic cyberpunk hues. */
-const NEON = ["#ff2d95", "#04d9ff", "#fde047", "#a855f7", "#39ff14", "#ff5a00"];
+/** Warm/cool office-window glow colors — small lit windows, not loud neon panels. */
+const WINDOW_LIT = ["#ffd9a0", "#ffe3b3", "#bfe2ff", "#cfeaff", "#fff0cf"];
 
 /* ------------------------------------------------------------------ *
  *  Canvas-generated emissive window texture
@@ -60,7 +60,7 @@ function makeWindowTexture(litColor: string, seed: number): THREE.CanvasTexture 
       const w = cell - pad;
       const h = cell - pad;
       const roll = rng();
-      if (roll > 0.62) {
+      if (roll > 0.72) {
         // lit window — vary brightness a touch
         const b = 0.55 + rng() * 0.45;
         ctx.fillStyle = `rgb(${Math.round(lit.r * 255 * b)},${Math.round(
@@ -147,8 +147,134 @@ interface Tower {
   w: number;
   d: number;
   h: number;
-  texIndex: number;
-  emissive: string;
+  /** Window glow color for this building's lit windows. */
+  litColor: string;
+  /** Per-building texture seed (each tower owns its own window texture). */
+  texSeed: number;
+}
+
+/* ------------------------------------------------------------------ *
+ *  One skyscraper — a solid dark box with small emissive windows.
+ *  Each building owns its own window texture (with the tiling baked in)
+ *  so windows read as small ~2u squares, never giant shared panels.
+ * ------------------------------------------------------------------ */
+
+function BuildingTower({ t }: { t: Tower }) {
+  const tex = useMemo(() => {
+    const tx = makeWindowTexture(t.litColor, t.texSeed);
+    // ~2–2.5 units per window (texture is a 6×12 window tile).
+    if (tx) tx.repeat.set(Math.max(1, Math.round(t.w / 12)), Math.max(2, Math.round(t.h / 30)));
+    return tx;
+  }, [t.litColor, t.texSeed, t.w, t.h]);
+  useEffect(() => () => tex?.dispose(), [tex]);
+
+  return (
+    <group position={[t.x, 0, t.z]}>
+      {/* Solid dark facade with small lit windows */}
+      <mesh position={[0, t.h / 2, 0]} castShadow receiveShadow>
+        <boxGeometry args={[t.w, t.h, t.d]} />
+        <meshStandardMaterial
+          color="#101015"
+          metalness={0.3}
+          roughness={0.78}
+          map={tex ?? undefined}
+          emissiveMap={tex ?? undefined}
+          emissive="#ffffff"
+          emissiveIntensity={0.5}
+        />
+      </mesh>
+      {/* Dark rooftop housing */}
+      <mesh position={[0, t.h + 1.5, 0]}>
+        <boxGeometry args={[t.w * 0.6, 3, t.d * 0.6]} />
+        <meshStandardMaterial color="#0a0a0e" metalness={0.5} roughness={0.6} />
+      </mesh>
+      {/* Aircraft warning light on tall towers */}
+      {t.h > 150 && (
+        <mesh position={[0, t.h + 3.4, 0]}>
+          <sphereGeometry args={[0.7, 8, 8]} />
+          <meshBasicMaterial color="#ff2d2d" />
+        </mesh>
+      )}
+    </group>
+  );
+}
+
+/* ------------------------------------------------------------------ *
+ *  Street lamps — tall posts with warm point lights so the player can
+ *  see the road. Placed on a sparse grid, skipping building footprints.
+ * ------------------------------------------------------------------ */
+
+function StreetLamps({ extent, towers }: { extent: number; towers: Tower[] }) {
+  const lamps = useMemo(() => {
+    const out: [number, number][] = [];
+    const n = 5;
+    const reach = extent * 1.0;
+    for (let i = 0; i < n; i++) {
+      for (let j = 0; j < n; j++) {
+        // Offset into the streets between building lots.
+        const x = (i / (n - 1) - 0.5) * 2 * reach + extent * 0.21;
+        const z = (j / (n - 1) - 0.5) * 2 * reach + extent * 0.21;
+        const insideTower = towers.some(
+          (t) => Math.abs(x - t.x) < t.w / 2 + 2.5 && Math.abs(z - t.z) < t.d / 2 + 2.5,
+        );
+        if (!insideTower) out.push([x, z]);
+      }
+    }
+    return out;
+  }, [extent, towers]);
+
+  return (
+    <group name="street-lamps">
+      {lamps.map(([x, z], i) => (
+        <group key={i} position={[x, 0, z]}>
+          {/* pole */}
+          <mesh position={[0, 4.5, 0]} castShadow>
+            <cylinderGeometry args={[0.22, 0.32, 9, 8]} />
+            <meshStandardMaterial color="#15161c" metalness={0.6} roughness={0.5} />
+          </mesh>
+          {/* lamp head (glows so the source is visible) */}
+          <mesh position={[0, 9, 0]}>
+            <boxGeometry args={[1.3, 0.5, 1.3]} />
+            <meshStandardMaterial color="#0e0e12" emissive="#ffd9a0" emissiveIntensity={1.8} />
+          </mesh>
+          <pointLight position={[0, 8.6, 0]} color="#ffdca8" intensity={6} distance={55} decay={2} />
+        </group>
+      ))}
+    </group>
+  );
+}
+
+/* ------------------------------------------------------------------ *
+ *  Road markings — yellow center lines + white lane edges down the
+ *  streets between building rows, so the ground reads as real roads.
+ * ------------------------------------------------------------------ */
+
+function RoadMarkings({ extent }: { extent: number }) {
+  const lot = extent * 0.42;
+  const span = extent * 2.4;
+  const centers = [-2.5, -1.5, -0.5, 0.5, 1.5, 2.5].map((k) => k * lot);
+
+  const strip = (key: string, x: number, z: number, w: number, l: number, color: string) => (
+    <mesh key={key} position={[x, 0, z]}>
+      <planeGeometry args={[w, l]} />
+      <meshBasicMaterial color={color} transparent opacity={0.85} />
+    </mesh>
+  );
+
+  return (
+    <group name="road-markings" position={[0, 0.06, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+      {centers.flatMap((c, i) => [
+        // Roads running along world Z (lines offset in local X)
+        strip(`vc-${i}`, c, 0, 0.5, span, "#e3c04a"),
+        strip(`vl-${i}`, c - 4, 0, 0.25, span, "#dcdcdc"),
+        strip(`vr-${i}`, c + 4, 0, 0.25, span, "#dcdcdc"),
+        // Roads running along world X (lines offset in local Y → world Z)
+        strip(`hc-${i}`, 0, c, span, 0.5, "#e3c04a"),
+        strip(`hl-${i}`, 0, c - 4, span, 0.25, "#dcdcdc"),
+        strip(`hr-${i}`, 0, c + 4, span, 0.25, "#dcdcdc"),
+      ])}
+    </group>
+  );
 }
 
 /**
@@ -178,37 +304,13 @@ function SkyBeam({ color }: { color: string }) {
   );
 }
 
-/** Architecture theme → silhouette hints. */
-function themeShape(architecture: string): { taper: number; cap: boolean } {
-  switch (architecture) {
-    case "Crowned Spires":
-      return { taper: 0.5, cap: true };
-    case "Mirror Glass":
-      return { taper: 1, cap: false };
-    case "Stacked Capsules":
-      return { taper: 0.85, cap: true };
-    case "Pagoda Decks":
-      return { taper: 0.7, cap: true };
-    case "Smokestacks":
-      return { taper: 0.35, cap: false };
-    default:
-      return { taper: 0.9, cap: false };
-  }
-}
-
 export default function CyberpunkWorld({ config }: { config: WorldConfig }) {
   const { palette, extent, density, seed } = config;
-  const { taper, cap } = themeShape(config.architecture);
-
-  // Four cached emissive window textures (lit in palette + neon hues).
-  const windowTextures = useMemo(() => {
-    const litColors = [palette.accent, palette.secondary, NEON[1], NEON[2]];
-    return litColors.map((c, i) => makeWindowTexture(c, (seed ^ 0xa11ce) + i * 97));
-  }, [palette.accent, palette.secondary, seed]);
 
   // City blocks: a grid of lots with streets between them. Heights 50–200,
   // packed denser for denser Normies. The center-back lot is reserved for the
-  // corporate megatower (built separately).
+  // corporate megatower (built separately). Each tower gets a window color +
+  // its own texture seed so its facade renders independently.
   const towers = useMemo<Tower[]>(() => {
     const rng = mulberry32(seed ^ 0xc17e5);
     const cols = 7;
@@ -235,24 +337,21 @@ export default function CyberpunkWorld({ config }: { config: WorldConfig }) {
           w,
           d,
           h: Math.min(h, 230),
-          texIndex: Math.floor(rng() * windowTextures.length),
-          emissive: NEON[Math.floor(rng() * NEON.length)],
+          litColor: WINDOW_LIT[Math.floor(rng() * WINDOW_LIT.length)],
+          texSeed: Math.floor(rng() * 1e9),
         });
       }
     }
     return out;
-  }, [seed, extent, density, windowTextures.length]);
+  }, [seed, extent, density]);
 
-  // Storefront neon signs at street level (colored point lights + glow boxes).
-  const storefronts = useMemo(() => {
-    const rng = mulberry32(seed ^ 0x5704e);
-    return towers.slice(0, 26).map((t, i) => ({
-      x: t.x + (rng() - 0.5) * t.w,
-      z: t.z + t.d / 2 + 1.2,
-      color: NEON[(i + Math.floor(rng() * NEON.length)) % NEON.length],
-      h: 3 + rng() * 5,
-    }));
-  }, [towers, seed]);
+  // Megatower window texture (its own instance, tiling baked in).
+  const megaTex = useMemo(() => {
+    const tx = makeWindowTexture("#cfe2ff", seed ^ 0x6a17e);
+    if (tx) tx.repeat.set(4, 10);
+    return tx;
+  }, [seed]);
+  useEffect(() => () => megaTex?.dispose(), [megaTex]);
 
   // Elevated highways: thick flat decks crossing the city at varied heights,
   // each carried by a row of support pylons down to the street so they read as
@@ -285,17 +384,15 @@ export default function CyberpunkWorld({ config }: { config: WorldConfig }) {
     return out;
   }, [seed, extent]);
 
-  const megaWindowTex = windowTextures[0];
-
   return (
     <group name="cyberpunk-world">
       {/* Near white/grey haze */}
       <CityFog near={40} far={extent * 2.1} />
 
-      {/* Lighting — moody, neon-lit night */}
-      <ambientLight color={palette.ambient} intensity={0.6} />
-      <directionalLight color={palette.key} intensity={0.9} position={[80, 200, -120]} castShadow />
-      <hemisphereLight args={[palette.secondary, "#05060d", 0.5]} />
+      {/* Lighting — moody night, but bright enough to read the streets */}
+      <ambientLight color={palette.ambient} intensity={0.9} />
+      <directionalLight color={palette.key} intensity={1.0} position={[80, 200, -120]} castShadow />
+      <hemisphereLight args={[palette.secondary, "#0a0a0e", 0.7]} />
 
       {/* Dark asphalt street ground (wet city look) + solid collider */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} receiveShadow>
@@ -327,76 +424,35 @@ export default function CyberpunkWorld({ config }: { config: WorldConfig }) {
             ))}
           </group>
         ))}
-        {/* Storefront signs */}
-        {storefronts.map((s, i) => (
-          <CuboidCollider key={`sfc-${i}`} args={[2, 0.7, 0.15]} position={[s.x, s.h, s.z]} />
-        ))}
       </RigidBody>
 
-      {/* Skyscrapers (city blocks) */}
-      {towers.map((t, i) => {
-        const tex = windowTextures[t.texIndex] ?? null;
-        if (tex) {
-          tex.repeat.set(Math.max(1, Math.round(t.w / 8)), Math.max(2, Math.round(t.h / 14)));
-        }
-        return (
-          <group key={i} position={[t.x, 0, t.z]}>
-            <mesh position={[0, t.h / 2, 0]} castShadow receiveShadow>
-              <boxGeometry args={[t.w, t.h, t.d]} />
-              <meshStandardMaterial
-                color="#0c1018"
-                metalness={0.75}
-                roughness={0.4}
-                map={tex ?? undefined}
-                emissiveMap={tex ?? undefined}
-                emissive={"#ffffff"}
-                emissiveIntensity={0.9}
-              />
-            </mesh>
-            {/* Neon edge strip up one corner */}
-            <mesh position={[t.w / 2, t.h / 2, t.d / 2 + 0.05]}>
-              <boxGeometry args={[0.4, t.h * 0.85, 0.4]} />
-              <meshBasicMaterial color={t.emissive} />
-            </mesh>
-            {/* Rooftop cap / antenna for themed silhouettes */}
-            {cap && (
-              <mesh position={[0, t.h + 3, 0]}>
-                <boxGeometry args={[t.w * taper, 6, t.d * taper]} />
-                <meshStandardMaterial color={palette.secondary} metalness={0.85} roughness={0.3} emissive={palette.secondary} emissiveIntensity={0.25} />
-              </mesh>
-            )}
-            {/* Aircraft warning light on tall towers */}
-            {t.h > 150 && (
-              <mesh position={[0, t.h + 1, 0]}>
-                <sphereGeometry args={[0.8, 8, 8]} />
-                <meshBasicMaterial color="#ff2d2d" />
-              </mesh>
-            )}
-          </group>
-        );
-      })}
+      {/* Road markings + street lamps so the ground reads + is lit */}
+      <RoadMarkings extent={extent} />
+      <StreetLamps extent={extent} towers={towers} />
+
+      {/* Skyscrapers (solid dark boxes with small lit windows) */}
+      {towers.map((t, i) => (
+        <BuildingTower key={i} t={t} />
+      ))}
 
       {/* Corporate megatower — the always-visible landmark (center-back) */}
       <group position={[0, 0, -extent * 1.25]}>
         <mesh position={[0, 150, 0]} castShadow>
           <boxGeometry args={[44, 300, 44]} />
           <meshStandardMaterial
-            color="#0a0e18"
-            metalness={0.85}
-            roughness={0.3}
-            map={(() => {
-              if (megaWindowTex) megaWindowTex.repeat.set(5, 22);
-              return megaWindowTex ?? undefined;
-            })()}
-            emissiveMap={megaWindowTex ?? undefined}
+            color="#0a0a0e"
+            metalness={0.4}
+            roughness={0.6}
+            map={megaTex ?? undefined}
+            emissiveMap={megaTex ?? undefined}
             emissive={"#ffffff"}
-            emissiveIntensity={1.0}
+            emissiveIntensity={0.55}
           />
         </mesh>
-        {/* Tapered crown */}
+        {/* Dark crown */}
         <mesh position={[0, 312, 0]}>
           <boxGeometry args={[20, 24, 20]} />
-          <meshStandardMaterial color={palette.accent} metalness={0.9} roughness={0.2} emissive={palette.accent} emissiveIntensity={0.6} />
+          <meshStandardMaterial color="#101018" metalness={0.7} roughness={0.35} emissive={palette.accent} emissiveIntensity={0.4} />
         </mesh>
         {/* Beacon spire */}
         <mesh position={[0, 336, 0]}>
@@ -406,11 +462,6 @@ export default function CyberpunkWorld({ config }: { config: WorldConfig }) {
         <pointLight position={[0, 348, 0]} color={palette.accent} intensity={6} distance={400} />
         {/* Vertical light beam shooting up from the roof — visible from spawn */}
         <SkyBeam color={palette.accent} />
-        {/* Giant corporate hologram band */}
-        <mesh position={[0, 220, 22.3]}>
-          <planeGeometry args={[40, 80]} />
-          <meshBasicMaterial color={palette.accent} transparent opacity={0.18} side={THREE.DoubleSide} />
-        </mesh>
       </group>
 
       {/* Elevated highways crossing between buildings, on support pylons */}
@@ -432,17 +483,6 @@ export default function CyberpunkWorld({ config }: { config: WorldConfig }) {
               <meshStandardMaterial color="#0c1018" metalness={0.6} roughness={0.6} />
             </mesh>
           ))}
-        </group>
-      ))}
-
-      {/* Neon storefronts at street level */}
-      {storefronts.map((s, i) => (
-        <group key={`sf-${i}`} position={[s.x, 0, s.z]}>
-          <mesh position={[0, s.h, 0]}>
-            <boxGeometry args={[4, 1.4, 0.3]} />
-            <meshBasicMaterial color={s.color} />
-          </mesh>
-          <pointLight position={[0, s.h, 1.5]} color={s.color} intensity={3.5} distance={26} decay={2} />
         </group>
       ))}
 
