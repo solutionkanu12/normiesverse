@@ -6,6 +6,10 @@ import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useAccount } from "wagmi";
 import normiesApi from "@/api/normiesApi";
 import { useNormieStore } from "@/store/useNormieStore";
+import { usePlayerStore } from "@/store/usePlayerStore";
+import { useQuestStore } from "@/store/useQuestStore";
+import { useGameStore } from "@/store/useGameStore";
+import { useWorldStore } from "@/store/useWorldStore";
 import NormieCard from "@/components/selection/NormieCard";
 import NormiePreview from "@/components/selection/NormiePreview";
 import type { PreviewData } from "@/components/selection/types";
@@ -92,6 +96,14 @@ export default function SelectPage() {
 
   const handleConfirm = () => {
     if (!preview) return;
+    // Wipe all run state so the new Normie starts a completely fresh game —
+    // no carried-over Reality Cores, quests, world, boss runtime, or avatar.
+    usePlayerStore.getState().reset();
+    useQuestStore.getState().reset();
+    useGameStore.getState().reset();
+    useWorldStore.getState().reset();
+    useNormieStore.getState().reset();
+
     setNormieId(preview.id);
     setNormieData({
       traits: preview.traits,

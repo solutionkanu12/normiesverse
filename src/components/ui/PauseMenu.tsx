@@ -15,6 +15,8 @@ import { useGameStore } from "@/store/useGameStore";
 import { useAudioStore } from "@/store/useAudioStore";
 import { usePlayerStore } from "@/store/usePlayerStore";
 import { useNormieStore } from "@/store/useNormieStore";
+import { useQuestStore } from "@/store/useQuestStore";
+import { useWorldStore } from "@/store/useWorldStore";
 import AchievementsPanel from "./AchievementsPanel";
 
 export default function PauseMenu() {
@@ -52,6 +54,17 @@ export default function PauseMenu() {
   if (!inGame) return null;
 
   const close = () => setPaused(false);
+
+  // Switching Normie wipes all run state so the next Normie starts fresh —
+  // no carried-over Reality Cores, quests, world, boss runtime, or avatar.
+  const handleChangeNormie = () => {
+    setPaused(false);
+    usePlayerStore.getState().reset();
+    useQuestStore.getState().reset();
+    useGameStore.getState().reset();
+    useWorldStore.getState().reset();
+    useNormieStore.getState().reset();
+  };
 
   return (
     <AnimatePresence>
@@ -157,7 +170,7 @@ export default function PauseMenu() {
               )}
               <Link
                 href="/select"
-                onClick={close}
+                onClick={handleChangeNormie}
                 className="border border-white/20 px-5 py-2 font-hud text-[11px] uppercase tracking-[0.2em] text-white/60 transition-colors hover:bg-white/5"
               >
                 Change Normie
